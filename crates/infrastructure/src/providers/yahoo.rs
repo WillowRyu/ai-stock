@@ -45,60 +45,72 @@ impl AssetProvider for YahooProvider {
         )
     }
 
+    /// Yahoo's `/v7/finance/quote` endpoint started requiring an authenticated
+    /// crumb in 2024-2025 (returns 401 Unauthorized to public callers). The
+    /// `/v8/finance/chart` endpoint is still public and exposes the same
+    /// `regularMarketPrice` / currency / `chartPreviousClose` inside its
+    /// `meta` block — so we issue one chart request per symbol and read the
+    /// metadata. 24h-change is derived from `(latest - chartPreviousClose) /
+    /// chartPreviousClose`; volume is not available in the meta and is left
+    /// `None`.
     async fn fetch_quotes(&self, symbols: &[Symbol]) -> Result<Vec<Quote>, ProviderError> {
-        if symbols.is_empty() {
-            return Ok(vec![]);
-        }
-        let tickers: Vec<&str> = symbols.iter().map(|s| s.ticker()).collect();
-        let url = format!(
-            "{}/v7/finance/quote?symbols={}",
-            self.base,
-            tickers.join(",")
-        );
-        let resp = self
-            .http
-            .get(&url, &[])
-            .await
-            .map_err(|e| ProviderError::Network(e.to_string()))?;
-        if resp.status == 429 {
-            return Err(ProviderError::RateLimited { retry_after_secs: 5 });
-        }
-        if resp.status >= 500 {
-            return Err(ProviderError::Upstream(resp.status.to_string()));
-        }
-
-        let v: serde_json::Value =
-            serde_json::from_slice(&resp.body).map_err(|e| ProviderError::Parse(e.to_string()))?;
-        let arr = v
-            .pointer("/quoteResponse/result")
-            .and_then(|x| x.as_array())
-            .ok_or_else(|| ProviderError::Parse("missing quoteResponse.result".into()))?;
         let mut out = Vec::new();
-        for item in arr {
-            let ticker = item.get("symbol").and_then(|x| x.as_str()).unwrap_or("");
-            let Some(symbol) = symbols.iter().find(|s| s.ticker() == ticker) else {
-                continue;
+        for symbol in symbols {
+            // 2-day window is enough to pick up `chartPreviousClose` even on
+            // weekends/holidays.
+            let now = Utc::now().timestamp();
+            let url = format!(
+                "{}/v8/finance/chart/{}?period1={}&period2={}&interval=1d",
+                self.base,
+                symbol.ticker(),
+                now - 60 * 60 * 24 * 5,
+                now,
+            );
+            let resp = self
+                .http
+                .get(&url, &[])
+                .await
+                .map_err(|e| ProviderError::Network(e.to_string()))?;
+            if resp.status == 429 {
+                return Err(ProviderError::RateLimited { retry_after_secs: 5 });
+            }
+            if resp.status >= 400 {
+                return Err(ProviderError::Upstream(format!(
+                    "yahoo chart {} for {}",
+                    resp.status,
+                    symbol.ticker()
+                )));
+            }
+
+            let v: serde_json::Value = serde_json::from_slice(&resp.body)
+                .map_err(|e| ProviderError::Parse(e.to_string()))?;
+            let meta = match v.pointer("/chart/result/0/meta") {
+                Some(m) => m,
+                None => {
+                    // Unknown symbol or empty chart response — skip this one
+                    // but don't fail the whole batch.
+                    continue;
+                }
             };
-            let price_f = item
-                .get("regularMarketPrice")
-                .and_then(|x| x.as_f64())
-                .ok_or_else(|| ProviderError::Parse("missing regularMarketPrice".into()))?;
-            let ccy_s = item
-                .get("currency")
-                .and_then(|x| x.as_str())
-                .unwrap_or("USD");
+            let price_f = match meta.get("regularMarketPrice").and_then(|x| x.as_f64()) {
+                Some(p) => p,
+                None => continue,
+            };
+            let ccy_s = meta.get("currency").and_then(|x| x.as_str()).unwrap_or("USD");
             let ccy = Currency::new(ccy_s).map_err(|e| ProviderError::Parse(format!("{e:?}")))?;
             let amount = Decimal::from_f64_retain(price_f)
                 .ok_or_else(|| ProviderError::Parse("price not decimal".into()))?;
+
             let mut q = Quote::new(symbol.clone(), Price::new(Money::new(amount, ccy)), Utc::now());
-            q.change_24h = item
-                .get("regularMarketChangePercent")
-                .and_then(|x| x.as_f64())
-                .and_then(|f| Decimal::from_f64_retain(f / 100.0));
-            q.volume_24h = item
-                .get("regularMarketVolume")
-                .and_then(|x| x.as_f64())
-                .and_then(Decimal::from_f64_retain);
+
+            // change_24h ≈ (price - previous close) / previous close, where
+            // "previous close" is yesterday's chartPreviousClose.
+            if let Some(prev) = meta.get("chartPreviousClose").and_then(|x| x.as_f64()) {
+                if prev != 0.0 {
+                    let change = (price_f - prev) / prev;
+                    q.change_24h = Decimal::from_f64_retain(change);
+                }
+            }
             out.push(q);
         }
         Ok(out)
@@ -221,14 +233,20 @@ mod tests {
     use wiremock::{matchers::*, Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
-    async fn parses_quote() {
+    async fn parses_quote_from_chart_meta() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/v7/finance/quote"))
+            .and(path_regex(r"^/v8/finance/chart/.+"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "quoteResponse": { "result": [
-                    { "symbol": "AAPL", "regularMarketPrice": 182.45, "currency": "USD",
-                      "regularMarketChangePercent": 1.24, "regularMarketVolume": 52_000_000 }
+                "chart": { "result": [
+                    {
+                        "meta": {
+                            "symbol": "AAPL",
+                            "currency": "USD",
+                            "regularMarketPrice": 182.45,
+                            "chartPreviousClose": 180.00
+                        }
+                    }
                 ]}
             })))
             .mount(&server)
@@ -237,6 +255,23 @@ mod tests {
         let s = Symbol::new(AssetKind::UsEquity, "AAPL", None).unwrap();
         let q = provider.fetch_quotes(&[s]).await.unwrap();
         assert_eq!(q.len(), 1);
+        assert_eq!(q[0].price.money().currency().as_str(), "USD");
         assert!(q[0].change_24h.is_some());
+    }
+
+    #[tokio::test]
+    async fn skips_unknown_symbol_without_crashing() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path_regex(r"^/v8/finance/chart/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chart": { "result": [{ "meta": {} }] }
+            })))
+            .mount(&server)
+            .await;
+        let provider = YahooProvider::with_base(Arc::new(ReqwestHttpClient::new()), server.uri());
+        let s = Symbol::new(AssetKind::UsEquity, "BOGUS", None).unwrap();
+        let q = provider.fetch_quotes(&[s]).await.unwrap();
+        assert!(q.is_empty());
     }
 }
