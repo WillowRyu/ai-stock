@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePortfolioStore } from "../lib/state/portfolioStore";
+import { formatMoney } from "../lib/format";
 import type { AssetKind, HoldingDto } from "../lib/ipc";
 
 export function PortfolioPanel() {
@@ -18,10 +19,10 @@ export function PortfolioPanel() {
       <div className="p-3 border-b border-slate-800">
         <div className="text-xs text-slate-500">총 평가액</div>
         <div className="text-xl tabular-nums">
-          {valuation?.total_value ?? "—"} {valuation?.total_value_currency ?? ""}
+          {valuation?.total_value ? formatMoney(valuation.total_value) : "—"} {valuation?.total_value_currency ?? ""}
         </div>
         <div className={"text-xs " + ((Number(valuation?.total_pnl ?? "0") >= 0) ? "text-emerald-400" : "text-rose-400")}>
-          P&L: {valuation?.total_pnl ?? "—"}
+          P&L: {valuation?.total_pnl ? formatMoney(valuation.total_pnl) : "—"}
         </div>
       </div>
 
@@ -30,12 +31,12 @@ export function PortfolioPanel() {
           <li key={i} className="p-2 border-b border-slate-900 flex justify-between">
             <div>
               <div>{h.symbol.ticker}</div>
-              <div className="text-slate-500">cost: {h.cost_basis}</div>
+              <div className="text-slate-500">cost: {formatMoney(h.cost_basis)}</div>
             </div>
             <div className="text-right">
-              <div>{h.market_value ?? "—"}</div>
+              <div>{h.market_value ? formatMoney(h.market_value) : "—"}</div>
               <div className={(Number(h.pnl ?? "0") >= 0) ? "text-emerald-400" : "text-rose-400"}>
-                {h.pnl ?? "—"}
+                {h.pnl ? formatMoney(h.pnl) : "—"}
               </div>
             </div>
             <button onClick={() => remove(h.symbol)} className="ml-2 text-slate-600 hover:text-rose-400">×</button>

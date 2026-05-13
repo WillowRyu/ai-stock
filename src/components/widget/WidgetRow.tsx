@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { formatPrice } from "../../lib/format";
 import type { QuoteDto } from "../../lib/ipc";
 
 export function WidgetRow({ q }: { q: QuoteDto }) {
@@ -6,7 +7,7 @@ export function WidgetRow({ q }: { q: QuoteDto }) {
   return (
     <div className="flex justify-between items-center text-xs px-2 py-1">
       <span className="opacity-90">{q.symbol.ticker}</span>
-      <span className="tabular-nums">{q.price}</span>
+      <span className="tabular-nums">{formatPrice(q.price)}</span>
       <span className={clsx("tabular-nums w-14 text-right",
         change === null ? "text-slate-400" : change >= 0 ? "text-emerald-400" : "text-rose-400")}>
         {change === null ? "" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`}

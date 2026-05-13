@@ -1,4 +1,5 @@
 import { useQuotesStore, quoteKey } from "../lib/state/quotesStore";
+import { formatPrice } from "../lib/format";
 import type { SymbolDto } from "../lib/ipc";
 
 export function DetailPane({ symbol }: { symbol: SymbolDto | null }) {
@@ -13,7 +14,7 @@ export function DetailPane({ symbol }: { symbol: SymbolDto | null }) {
       <div className="text-xs uppercase text-slate-500">{symbol.kind}</div>
       <h2 className="text-2xl font-semibold">{symbol.ticker}{symbol.quote_currency ? `/${symbol.quote_currency}` : ""}</h2>
       <div className="mt-4 flex items-baseline gap-3">
-        <div className="text-4xl tabular-nums">{q?.price ?? "—"}</div>
+        <div className="text-4xl tabular-nums">{q ? formatPrice(q.price) : "—"}</div>
         <div className="text-slate-400">{q?.currency ?? ""}</div>
         {changePct !== null && (
           <div className={changePct >= 0 ? "text-emerald-400" : "text-rose-400"}>

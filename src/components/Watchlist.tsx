@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import clsx from "clsx";
 import { useWatchlistStore } from "../lib/state/watchlistStore";
 import { useQuotesStore, quoteKey } from "../lib/state/quotesStore";
+import { formatPrice } from "../lib/format";
 import type { SymbolDto } from "../lib/ipc";
 
 interface Props {
@@ -36,7 +37,7 @@ export function Watchlist({ selected, onSelect, onAdd }: Props) {
                 <div className="text-[10px] text-slate-500 uppercase">{s.kind}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm tabular-nums">{q?.price ?? "—"}</div>
+                <div className="text-sm tabular-nums">{q ? formatPrice(q.price) : "—"}</div>
                 <div className={clsx("text-[10px] tabular-nums",
                   changePct === null ? "text-slate-500" : changePct >= 0 ? "text-emerald-400" : "text-rose-400")}>
                   {changePct === null ? "" : `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`}
