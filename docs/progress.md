@@ -31,3 +31,15 @@
 - [x] Task 2.5: PortfolioService.
 - [x] Task 2.6: SettingsService.
 - [x] Task 2.7: PollScheduler.
+
+### Phase 3 — Infrastructure adapters
+
+- [x] Task 3.1: SystemClock + ReqwestHttpClient.
+- [x] Task 3.2: KeyringSecretStore.
+- [x] Task 3.3: SqliteWatchlistRepo + migrations.
+- [x] Task 3.4: SqlitePortfolioRepo.
+- [x] Task 3.5: SqliteSettingsRepo.
+- [x] Task 3.6: BinanceProvider.
+- [x] Task 3.7: CoinGeckoProvider.
+- [x] Task 3.8: YahooProvider.
+- [x] Task 3.9: FinnhubProvider.
