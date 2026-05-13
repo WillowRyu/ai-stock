@@ -1,4 +1,5 @@
 //! Pure domain layer. No IO, no async, no infra imports.
+pub mod alert;
 pub mod asset;
 pub mod candle;
 pub mod holding;
