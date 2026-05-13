@@ -21,6 +21,7 @@ keyring.workspace = true
 scraper = "0.20"
 eventsource-stream = "0.2"
 futures.workspace = true
+roxmltree = "0.20"
 
 [dev-dependencies]
 wiremock.workspace = true
