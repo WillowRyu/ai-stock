@@ -10,10 +10,10 @@ export function Toasts() {
         <div
           key={t.id}
           className={clsx(
-            "pointer-events-auto border rounded-md px-3 py-2 text-xs shadow-lg max-w-xs",
-            t.kind === "error" && "bg-rose-950 border-rose-700 text-rose-100",
-            t.kind === "warning" && "bg-amber-950 border-amber-700 text-amber-100",
-            t.kind === "info" && "bg-slate-900 border-slate-700 text-slate-100",
+            "pointer-events-auto backdrop-blur-md border rounded-md px-3 py-2 text-xs shadow-lg max-w-xs",
+            t.kind === "error" && "bg-rose-100/80 dark:bg-rose-950/70 border-rose-300/50 dark:border-rose-800 text-rose-900 dark:text-rose-100",
+            t.kind === "warning" && "bg-amber-100/80 dark:bg-amber-950/70 border-amber-300/50 dark:border-amber-800 text-amber-900 dark:text-amber-100",
+            t.kind === "info" && "bg-white/70 dark:bg-slate-900/70 border-slate-300/50 dark:border-slate-700 text-slate-900 dark:text-slate-100",
           )}
         >
           <div className="flex justify-between items-start gap-2">

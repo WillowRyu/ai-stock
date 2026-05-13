@@ -99,16 +99,16 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
   const presets = PRESETS[kind] ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[28rem] space-y-3"
+        className="glass-panel rounded-lg p-5 w-[28rem] space-y-3"
       >
-        <h3 className="text-lg font-semibold">종목 추가</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">종목 추가</h3>
 
         <div className="block text-sm">
-          <span>자산 유형</span>
+          <span className="text-slate-700 dark:text-slate-300">자산 유형</span>
           <Select
             value={kind}
             options={KIND_OPTIONS}
@@ -127,7 +127,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
 
         {presets.length > 0 && (
           <div>
-            <div className="text-[10px] uppercase text-slate-500 mb-1">자주 쓰는 종목 (클릭하면 즉시 추가)</div>
+            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mb-1">자주 쓰는 종목 (클릭하면 즉시 추가)</div>
             <div className="flex flex-wrap gap-1">
               {presets.map((p) => (
                 <button
@@ -135,7 +135,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
                   key={p.ticker}
                   disabled={busy}
                   onClick={() => pickPreset(p)}
-                  className="text-[11px] bg-slate-800 hover:bg-slate-700 rounded px-2 py-1 disabled:opacity-50"
+                  className="btn-secondary text-[11px] px-2 py-1 disabled:opacity-50"
                 >
                   {p.label}
                 </button>
@@ -144,33 +144,33 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
           </div>
         )}
 
-        <div className="border-t border-slate-800 pt-3">
-          <div className="text-[10px] uppercase text-slate-500 mb-1">직접 입력</div>
-          <label className="block text-sm">
+        <div className="border-t border-slate-300/40 dark:border-white/10 pt-3">
+          <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mb-1">직접 입력</div>
+          <label className="block text-sm text-slate-700 dark:text-slate-300">
             티커
             <input
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
+              className="mt-1 w-full glass-inset rounded px-3 py-2.5 text-base text-slate-900 dark:text-slate-100"
             />
           </label>
           {kind === "crypto" && (
-            <label className="block text-sm mt-2">
+            <label className="block text-sm mt-2 text-slate-700 dark:text-slate-300">
               호가 통화 (예: USDT, USD)
               <input
                 value={quote}
                 onChange={(e) => setQuote(e.target.value)}
-                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
+                className="mt-1 w-full glass-inset rounded px-3 py-2.5 text-base text-slate-900 dark:text-slate-100"
               />
             </label>
           )}
         </div>
 
-        {error && <div className="text-rose-400 text-xs">{error}</div>}
+        {error && <div className="text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
 
         <div className="flex gap-2 justify-end">
-          <button type="button" onClick={onClose} className="px-3 py-1 text-sm rounded bg-slate-800">취소</button>
-          <button type="submit" disabled={busy} className="px-3 py-1 text-sm rounded bg-emerald-600 disabled:opacity-50">
+          <button type="button" onClick={onClose} className="btn-secondary text-sm">취소</button>
+          <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">
             {busy ? "추가 중..." : "추가"}
           </button>
         </div>

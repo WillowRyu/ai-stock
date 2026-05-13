@@ -87,28 +87,28 @@ export function AlertsPanel({ onClose }: { onClose(): void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[32rem] space-y-3">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="glass-panel rounded-lg p-5 w-[32rem] space-y-3">
         <div className="flex justify-between">
-          <h3 className="text-lg font-semibold">알림</h3>
-          <button onClick={onClose}>×</button>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">알림</h3>
+          <button onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">×</button>
         </div>
 
         <form onSubmit={create} className="grid grid-cols-2 gap-2 text-xs">
-          <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as AssetKind })} className="bg-slate-800 rounded p-1.5">
+          <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as AssetKind })} className="glass-inset rounded p-1.5 text-slate-700 dark:text-slate-200">
             <option value="crypto">Crypto</option>
             <option value="us">US Equity</option>
             <option value="kr">KR Equity</option>
           </select>
-          <input value={draft.ticker} onChange={(e) => setDraft({ ...draft, ticker: e.target.value })} placeholder="ticker" className="bg-slate-800 rounded p-1.5" />
+          <input value={draft.ticker} onChange={(e) => setDraft({ ...draft, ticker: e.target.value })} placeholder="ticker" className="glass-inset rounded p-1.5 text-slate-900 dark:text-slate-100" />
           {draft.kind === "crypto" && (
-            <input value={draft.quote} onChange={(e) => setDraft({ ...draft, quote: e.target.value })} placeholder="quote currency" className="bg-slate-800 rounded p-1.5 col-span-2" />
+            <input value={draft.quote} onChange={(e) => setDraft({ ...draft, quote: e.target.value })} placeholder="quote currency" className="glass-inset rounded p-1.5 col-span-2 text-slate-900 dark:text-slate-100" />
           )}
 
           <select
             value={draft.condition}
             onChange={(e) => setDraft({ ...draft, condition: e.target.value as AlertConditionKind })}
-            className="bg-slate-800 rounded p-1.5 col-span-2"
+            className="glass-inset rounded p-1.5 col-span-2 text-slate-700 dark:text-slate-200"
           >
             {CONDITION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -120,26 +120,26 @@ export function AlertsPanel({ onClose }: { onClose(): void }) {
               value={draft.amount}
               onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
               placeholder={cond.value.startsWith("rsi_") ? "RSI 임계값 (예: 70)" : "임계값"}
-              className={"bg-slate-800 rounded p-1.5 " + (cond.needsCurrency ? "" : "col-span-2")}
+              className={"glass-inset rounded p-1.5 text-slate-900 dark:text-slate-100 " + (cond.needsCurrency ? "" : "col-span-2")}
             />
           )}
           {cond.needsCurrency && (
-            <input value={draft.ccy} onChange={(e) => setDraft({ ...draft, ccy: e.target.value })} placeholder="통화" className="bg-slate-800 rounded p-1.5" />
+            <input value={draft.ccy} onChange={(e) => setDraft({ ...draft, ccy: e.target.value })} placeholder="통화" className="glass-inset rounded p-1.5 text-slate-900 dark:text-slate-100" />
           )}
 
-          <button type="submit" className="col-span-2 bg-emerald-600 rounded py-1.5">추가</button>
+          <button type="submit" className="col-span-2 btn-primary">추가</button>
         </form>
 
-        {error && <div className="text-rose-400 text-xs">{error}</div>}
+        {error && <div className="text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
 
         <ul className="text-xs space-y-1 max-h-60 overflow-y-auto">
           {rules.map((r) => (
-            <li key={r.id} className="flex justify-between border-b border-slate-800 py-1">
+            <li key={r.id} className="flex justify-between border-b border-slate-300/40 dark:border-white/10 py-1 text-slate-700 dark:text-slate-200">
               <span>{describeRule(r)}</span>
-              <button onClick={async () => { await alertsIpc.delete(r.id); await load(); }} className="text-rose-400">삭제</button>
+              <button onClick={async () => { await alertsIpc.delete(r.id); await load(); }} className="text-rose-600 dark:text-rose-400">삭제</button>
             </li>
           ))}
-          {rules.length === 0 && <li className="text-slate-500 text-center py-2">규칙 없음</li>}
+          {rules.length === 0 && <li className="text-slate-500 dark:text-slate-500 text-center py-2">규칙 없음</li>}
         </ul>
       </div>
     </div>

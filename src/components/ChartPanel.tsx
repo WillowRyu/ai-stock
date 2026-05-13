@@ -228,7 +228,7 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
 
   if (!symbol) {
     return (
-      <div className="text-slate-500 text-sm p-4">차트를 보려면 워치리스트에서 종목을 선택하세요</div>
+      <div className="text-slate-500 dark:text-slate-400 text-sm p-4">차트를 보려면 워치리스트에서 종목을 선택하세요</div>
     );
   }
 
@@ -241,17 +241,18 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
             onClick={() => setPreset(p)}
             title={`${p.days >= 365 ? `${Math.round(p.days / 365)}년` : p.days >= 30 ? `${Math.round(p.days / 30)}개월` : `${p.days}일`} · ${p.interval}봉`}
             className={
-              "px-2 py-1 rounded " +
-              (preset.key === p.key ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700")
+              preset.key === p.key
+                ? "px-2 py-1 rounded bg-emerald-600 text-white"
+                : "btn-secondary px-2 py-1"
             }
           >
             {p.key}
           </button>
         ))}
-        <span className="text-[10px] text-slate-500 ml-2">{preset.interval} 봉</span>
-        {loading && <span className="text-slate-500 ml-2">로딩...</span>}
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{preset.interval} 봉</span>
+        {loading && <span className="text-slate-500 dark:text-slate-400 ml-2">로딩...</span>}
       </div>
-      <div className="flex flex-wrap gap-3 text-xs items-center text-slate-300">
+      <div className="glass-inset rounded px-3 py-2 flex flex-wrap gap-3 text-xs items-center text-slate-700 dark:text-slate-300">
         <IndicatorToggle
           label="SMA20"
           checked={show.sma20}
@@ -273,8 +274,8 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
           onChange={(v) => setShow((s) => ({ ...s, macd: v }))}
         />
       </div>
-      {error && <div className="text-rose-400 text-xs">{error}</div>}
-      <div className="text-[10px] text-slate-500">
+      {error && <div className="text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
+      <div className="text-[10px] text-slate-500 dark:text-slate-400">
         가격
         {show.sma20 && " · SMA20(노랑)"}
         {show.sma50 && " · SMA50(보라)"}
@@ -282,17 +283,17 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
       <div ref={priceRef} className="h-72 bg-slate-950 rounded border border-slate-800" />
       {show.rsi && (
         <>
-          <div className="text-[10px] text-slate-500">RSI(14) · 30/70 기준선</div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">RSI(14) · 30/70 기준선</div>
           <div ref={rsiRef} className="h-24 bg-slate-950 rounded border border-slate-800" />
         </>
       )}
       {show.macd && (
         <>
-          <div className="text-[10px] text-slate-500">MACD(12,26,9) · 시그널/히스토그램</div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">MACD(12,26,9) · 시그널/히스토그램</div>
           <div ref={macdRef} className="h-24 bg-slate-950 rounded border border-slate-800" />
         </>
       )}
-      <div className="text-[10px] text-slate-500">거래량</div>
+      <div className="text-[10px] text-slate-500 dark:text-slate-400">거래량</div>
       <div ref={volumeRef} className="h-16 bg-slate-950 rounded border border-slate-800" />
     </div>
   );
