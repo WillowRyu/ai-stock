@@ -13,3 +13,4 @@ rust_decimal.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 insta.workspace = true
+rust_decimal_macros = "1"
