@@ -9,7 +9,7 @@ use application::{
 use infrastructure::{
     clock::SystemClock, http::ReqwestHttpClient, keyring_secrets::KeyringSecretStore,
     news::{coindesk_rss::CoinDeskRss, yahoo_rss::YahooNewsRss},
-    providers::{anthropic::AnthropicProvider, binance::BinanceProvider, coingecko::CoinGeckoProvider, finnhub::FinnhubProvider, gemini::GeminiProvider, naver_kr::NaverKrProvider, openai::OpenAiProvider, yahoo::YahooProvider},
+    providers::{anthropic::AnthropicProvider, binance::BinanceProvider, coingecko::CoinGeckoProvider, finnhub::FinnhubProvider, gemini::GeminiProvider, kis::KisProvider, naver_kr::NaverKrProvider, openai::OpenAiProvider, yahoo::YahooProvider},
     sqlite::{open, alert_repo::SqliteAlertRepo, watchlist_repo::SqliteWatchlistRepo, portfolio_repo::SqlitePortfolioRepo, settings_repo::SqliteSettingsRepo},
 };
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
@@ -39,6 +39,9 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
 
     let http: Arc<dyn HttpClient> = Arc::new(ReqwestHttpClient::new());
 
+    let secrets = Arc::new(KeyringSecretStore::new("dev.willowryu.aistock"));
+    let secrets_dyn: Arc<dyn application::ports::secret_store::SecretStore> = secrets.clone();
+
     let mut coingecko_ids = HashMap::new();
     for (t, id) in [("BTC", "bitcoin"), ("ETH", "ethereum"), ("SOL", "solana"), ("XRP", "ripple")] {
         coingecko_ids.insert(t.into(), id.into());
@@ -57,6 +60,10 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
         providers.push(Arc::new(FinnhubProvider::new(http.clone(), key)));
     }
     providers.push(Arc::new(YahooProvider::new(http.clone())));
+    // KIS before Naver: KIS's authenticated OpenAPI is more reliable than the
+    // public Naver finance HTML scrape. If credentials aren't set or KIS errors,
+    // MarketService::refresh falls through to Naver scraping automatically.
+    providers.push(Arc::new(KisProvider::new(http.clone(), secrets_dyn.clone())));
     providers.push(Arc::new(NaverKrProvider::new(http.clone())));
 
     let market = Arc::new(MarketService::new(watchlist_repo, providers));
@@ -69,7 +76,6 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
         fx.clone(),
     ));
     let settings = Arc::new(SettingsService::new(settings_repo.clone()));
-    let secrets = Arc::new(KeyringSecretStore::new("dev.willowryu.aistock"));
 
     // NOTE: The periodic refresh loop is driven from `main.rs` rather than
     // `PollScheduler` here so the app event loop can capture per-symbol
@@ -92,8 +98,7 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
             }
         });
 
-    let secrets_dyn: Arc<dyn application::ports::secret_store::SecretStore> = secrets.clone();
-    let ai = Arc::new(AiService::new(secrets_dyn, market.clone(), news, provider_factory));
+    let ai = Arc::new(AiService::new(secrets_dyn.clone(), market.clone(), news, provider_factory));
 
     AppState { market, portfolio, settings, alerts, secrets, ai, fx }
 }
