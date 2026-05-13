@@ -186,7 +186,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/v3/ticker/24hr"))
-            .and(query_param("symbol", "BTCUSD"))
+            .and(query_param("symbol", "BTCUSDT"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "lastPrice": "67000.50",
                 "priceChangePercent": "1.24",
@@ -196,7 +196,7 @@ mod tests {
             .await;
 
         let provider = BinanceProvider::with_base(Arc::new(ReqwestHttpClient::new()), server.uri());
-        let s = Symbol::new(AssetKind::Crypto, "BTC", Some("USD")).unwrap();
+        let s = Symbol::new(AssetKind::Crypto, "BTC", Some("USDT")).unwrap();
         let quotes = provider.fetch_quotes(&[s]).await.unwrap();
         assert_eq!(quotes.len(), 1);
         assert_eq!(

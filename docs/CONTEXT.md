@@ -19,7 +19,7 @@
 | Holding | A position the user owns: Symbol + Quantity + cost basis. |
 | Watchlist | Aggregate of Symbols the user wants to track. |
 | Portfolio | Aggregate of Holdings; can be evaluated against current Quotes. |
-| Money | Decimal amount + currency. |
+| Money | Decimal amount + Currency (3-5 uppercase ASCII letters, e.g. USD, KRW, USDT). |
 | Quantity | Non-negative decimal count of units. |
 | Provider | External source for quotes (Binance, Yahoo, etc.) hidden behind a trait. |
 

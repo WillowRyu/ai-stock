@@ -3,18 +3,23 @@ use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct Currency([u8; 3]);
+pub struct Currency {
+    len: u8,
+    bytes: [u8; 5],
+}
 
 impl Currency {
     pub fn new(code: &str) -> Result<Self, MoneyError> {
-        if code.len() != 3 || !code.chars().all(|c| c.is_ascii_uppercase()) {
+        let len = code.len();
+        if !(3..=5).contains(&len) || !code.chars().all(|c| c.is_ascii_uppercase()) {
             return Err(MoneyError::InvalidCurrency(code.to_string()));
         }
-        let bytes = code.as_bytes();
-        Ok(Self([bytes[0], bytes[1], bytes[2]]))
+        let mut bytes = [0u8; 5];
+        bytes[..len].copy_from_slice(code.as_bytes());
+        Ok(Self { len: len as u8, bytes })
     }
     pub fn as_str(&self) -> &str {
-        std::str::from_utf8(&self.0).unwrap()
+        std::str::from_utf8(&self.bytes[..self.len as usize]).unwrap()
     }
 }
 
@@ -26,7 +31,7 @@ pub struct Money {
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum MoneyError {
-    #[error("invalid currency code: {0}")]
+    #[error("invalid currency code (must be 3-5 uppercase ASCII): {0}")]
     InvalidCurrency(String),
     #[error("currency mismatch: {0} vs {1}")]
     CurrencyMismatch(String, String),
@@ -115,6 +120,22 @@ mod tests {
     fn multiplies_by_scalar() {
         let a = Money::parse("3", "USD").unwrap();
         assert_eq!(a.mul_scalar(dec!(2)), Money::parse("6", "USD").unwrap());
+    }
+
+    #[test]
+    fn accepts_four_char_stablecoin() {
+        let m = Money::parse("1", "USDT").unwrap();
+        assert_eq!(m.currency().as_str(), "USDT");
+    }
+
+    #[test]
+    fn rejects_two_char_currency() {
+        assert!(matches!(Money::parse("1", "US"), Err(MoneyError::InvalidCurrency(_))));
+    }
+
+    #[test]
+    fn rejects_six_char_currency() {
+        assert!(matches!(Money::parse("1", "USDTKR"), Err(MoneyError::InvalidCurrency(_))));
     }
 
     use proptest::prelude::*;
