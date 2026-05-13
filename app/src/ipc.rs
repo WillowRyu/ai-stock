@@ -1,5 +1,5 @@
 use crate::wiring::AppState;
-use application::indicator_service::compute_snapshot;
+use application::indicator_service::{compute_series, compute_snapshot, IndicatorSeries};
 use application::ports::repos::AppSettings;
 use application::ports::secret_store::{SecretError, SecretStore};
 use domain::{
@@ -279,6 +279,68 @@ pub async fn ai_has_key(state: State<'_, AppState>, provider: String) -> Result<
         Err(SecretError::NotFound(_)) => Ok(false),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[derive(Serialize, Clone)]
+pub struct CandleDto {
+    pub opened_at: String,
+    pub open: String,
+    pub high: String,
+    pub low: String,
+    pub close: String,
+    pub volume: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct ChartDataDto {
+    pub candles: Vec<CandleDto>,
+    pub sma_20: Vec<Option<String>>,
+    pub sma_50: Vec<Option<String>>,
+    pub rsi_14: Vec<Option<String>>,
+    pub macd: Vec<Option<String>>,
+    pub macd_signal: Vec<Option<String>>,
+    pub macd_histogram: Vec<Option<String>>,
+}
+
+#[tauri::command]
+pub async fn chart_data(
+    state: State<'_, AppState>,
+    symbol: SymbolDto,
+    days: u32,
+) -> Result<ChartDataDto, String> {
+    let sym = dto_to_symbol(&symbol)?;
+    let from = chrono::Utc::now() - chrono::Duration::days(days as i64);
+    let to = chrono::Utc::now();
+    let candles = state
+        .market
+        .fetch_candles(&sym, from, to)
+        .await
+        .map_err(|e| e.to_string())?;
+    let series: IndicatorSeries = compute_series(&candles);
+
+    let stringify_vec = |v: Vec<Option<Decimal>>| -> Vec<Option<String>> {
+        v.into_iter().map(|o| o.map(|d| d.to_string())).collect()
+    };
+
+    Ok(ChartDataDto {
+        candles: candles
+            .iter()
+            .map(|c| CandleDto {
+                opened_at: c.opened_at.to_rfc3339(),
+                open: c.open.money().amount().to_string(),
+                high: c.high.money().amount().to_string(),
+                low: c.low.money().amount().to_string(),
+                close: c.close.money().amount().to_string(),
+                volume: c.volume.to_string(),
+            })
+            .collect(),
+        sma_20: stringify_vec(series.sma_20),
+        sma_50: stringify_vec(series.sma_50),
+        rsi_14: stringify_vec(series.rsi_14),
+        macd: stringify_vec(series.macd),
+        macd_signal: stringify_vec(series.macd_signal),
+        macd_histogram: stringify_vec(series.macd_histogram),
+    })
 }
 
 #[tauri::command]

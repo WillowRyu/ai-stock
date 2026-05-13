@@ -23,6 +23,7 @@ async fn main() {
             ipc::settings_get, ipc::settings_save,
             ipc::widget_toggle,
             ipc::indicators_for,
+            ipc::chart_data,
             ipc::alerts_list, ipc::alerts_create, ipc::alerts_delete,
             ipc::ai_set_key, ipc::ai_clear_key, ipc::ai_has_key, ipc::ai_commentary,
         ])
