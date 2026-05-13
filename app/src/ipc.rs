@@ -1,4 +1,5 @@
 use crate::wiring::AppState;
+use application::indicator_service::compute_snapshot;
 use application::ports::repos::AppSettings;
 use domain::{
     asset::AssetKind, holding::Holding, money::{Currency, Money}, quantity::Quantity, symbol::Symbol,
@@ -137,6 +138,46 @@ pub async fn settings_get(state: State<'_, AppState>) -> Result<AppSettings, Str
 #[tauri::command]
 pub async fn settings_save(state: State<'_, AppState>, settings: AppSettings) -> Result<(), String> {
     state.settings.save(settings).await.map_err(|e| e.to_string())
+}
+
+#[derive(Serialize, Clone)]
+pub struct IndicatorSnapshotDto {
+    pub sma_20: Option<String>,
+    pub sma_50: Option<String>,
+    pub ema_20: Option<String>,
+    pub rsi_14: Option<String>,
+    pub macd: Option<String>,
+    pub macd_signal: Option<String>,
+    pub bollinger_upper: Option<String>,
+    pub bollinger_lower: Option<String>,
+}
+
+#[tauri::command]
+pub async fn indicators_for(
+    state: State<'_, AppState>,
+    symbol: SymbolDto,
+    days: u32,
+) -> Result<IndicatorSnapshotDto, String> {
+    let s = dto_to_symbol(&symbol)?;
+    let from = chrono::Utc::now() - chrono::Duration::days(days as i64);
+    let to = chrono::Utc::now();
+    let candles = state
+        .market
+        .fetch_candles(&s, from, to)
+        .await
+        .map_err(|e| e.to_string())?;
+    let snap = compute_snapshot(&candles);
+    let s = |d: Option<rust_decimal::Decimal>| d.map(|x| x.to_string());
+    Ok(IndicatorSnapshotDto {
+        sma_20: s(snap.sma_20),
+        sma_50: s(snap.sma_50),
+        ema_20: s(snap.ema_20),
+        rsi_14: s(snap.rsi_14),
+        macd: s(snap.macd),
+        macd_signal: s(snap.macd_signal),
+        bollinger_upper: s(snap.bollinger_upper),
+        bollinger_lower: s(snap.bollinger_lower),
+    })
 }
 
 #[tauri::command]

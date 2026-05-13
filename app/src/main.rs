@@ -21,6 +21,7 @@ async fn main() {
             ipc::portfolio_upsert, ipc::portfolio_delete, ipc::portfolio_valuation,
             ipc::settings_get, ipc::settings_save,
             ipc::widget_toggle,
+            ipc::indicators_for,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

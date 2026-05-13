@@ -57,6 +57,7 @@ name = "ai-stock-app"
 version = "0.1.0"
 dependencies = [
  "application",
+ "chrono",
  "domain",
  "infrastructure",
  "rust_decimal",

@@ -70,6 +70,20 @@ impl MarketService {
     pub async fn snapshot(&self) -> HashMap<Symbol, Quote> {
         self.last_quotes.read().await.clone()
     }
+
+    pub async fn fetch_candles(
+        &self,
+        symbol: &Symbol,
+        from: chrono::DateTime<chrono::Utc>,
+        to: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<domain::candle::Candle>, MarketError> {
+        let provider = self
+            .providers
+            .iter()
+            .find(|p| p.supports(symbol))
+            .ok_or_else(|| MarketError::NoProvider(symbol.to_canonical_string()))?;
+        Ok(provider.fetch_candles(symbol, from, to).await?)
+    }
 }
 
 #[cfg(test)]
