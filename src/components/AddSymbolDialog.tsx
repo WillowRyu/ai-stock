@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { useWatchlistStore } from "../lib/state/watchlistStore";
+import { Select } from "./Select";
 import type { AssetKind, SymbolDto } from "../lib/ipc";
+
+const KIND_OPTIONS = [
+  { value: "crypto", label: "Crypto" },
+  { value: "us", label: "US Equity" },
+  { value: "kr", label: "KR Equity" },
+  { value: "fx", label: "Forex" },
+  { value: "com", label: "Commodity" },
+];
 
 interface Preset {
   ticker: string;
@@ -98,12 +107,13 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
       >
         <h3 className="text-lg font-semibold">종목 추가</h3>
 
-        <label className="block text-sm">
-          자산 유형
-          <select
+        <div className="block text-sm">
+          <span>자산 유형</span>
+          <Select
             value={kind}
-            onChange={(e) => {
-              const k = e.target.value as AssetKind;
+            options={KIND_OPTIONS}
+            onChange={(v) => {
+              const k = v as AssetKind;
               setKind(k);
               const first = PRESETS[k]?.[0];
               if (first) {
@@ -111,15 +121,9 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
                 if (k === "crypto") setQuote(first.quote_currency ?? "USDT");
               }
             }}
-            className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
-          >
-            <option value="crypto">Crypto</option>
-            <option value="us">US Equity</option>
-            <option value="kr">KR Equity</option>
-            <option value="fx">Forex</option>
-            <option value="com">Commodity</option>
-          </select>
-        </label>
+            className="mt-1"
+          />
+        </div>
 
         {presets.length > 0 && (
           <div>

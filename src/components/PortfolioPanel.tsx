@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePortfolioStore } from "../lib/state/portfolioStore";
 import { useWatchlistStore } from "../lib/state/watchlistStore";
 import { formatMoney } from "../lib/format";
+import { Select } from "./Select";
 import type { HoldingDto, SymbolDto } from "../lib/ipc";
 
 function defaultCostCurrency(s: SymbolDto): string {
@@ -158,20 +159,15 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
           </p>
         ) : (
           <>
-            <label className="block text-sm">
+            <div className="block text-sm">
               <span className="text-slate-300">종목</span>
-              <select
+              <Select
                 value={selectedKey}
-                onChange={(e) => setSelectedKey(e.target.value)}
-                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
-              >
-                {watchlist.map((s) => (
-                  <option key={symbolKey(s)} value={symbolKey(s)}>
-                    {symbolLabel(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={watchlist.map((s) => ({ value: symbolKey(s), label: symbolLabel(s) }))}
+                onChange={setSelectedKey}
+                className="mt-1"
+              />
+            </div>
 
             <label className="block text-sm">
               <span className="text-slate-300">보유 수량</span>
