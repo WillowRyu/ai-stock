@@ -54,12 +54,12 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <header className="h-10 border-b border-slate-800 px-4 flex items-center text-sm">
-        <span className="font-semibold">ai-stock</span>
+      <header className="h-10 border-b border-slate-300/40 dark:border-white/10 px-4 flex items-center text-sm">
+        <span className="font-semibold text-slate-900 dark:text-slate-100">ai-stock</span>
         <div className="ml-auto flex gap-2">
-          <button onClick={() => setShowAi(true)} className="text-xs px-2 py-1 rounded bg-slate-800">AI</button>
-          <button onClick={() => setShowAlerts(true)} className="text-xs px-2 py-1 rounded bg-slate-800">알림</button>
-          <button onClick={() => invoke("widget_toggle")} className="text-xs px-2 py-1 rounded bg-slate-800">위젯</button>
+          <button onClick={() => setShowAi(true)} className="btn-secondary text-xs px-2 py-1">AI</button>
+          <button onClick={() => setShowAlerts(true)} className="btn-secondary text-xs px-2 py-1">알림</button>
+          <button onClick={() => invoke("widget_toggle")} className="btn-secondary text-xs px-2 py-1">위젯</button>
         </div>
       </header>
       <div className="flex flex-1 min-h-0">

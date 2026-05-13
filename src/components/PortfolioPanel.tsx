@@ -33,28 +33,28 @@ export function PortfolioPanel() {
   useEffect(() => { refresh(); }, [refresh]);
 
   return (
-    <aside className="w-80 border-l border-slate-800 flex flex-col">
-      <div className="p-3 border-b border-slate-800 flex justify-between items-center">
-        <span className="text-xs uppercase text-slate-400">Portfolio</span>
-        <button onClick={() => setOpen(true)} className="text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700">+ Add</button>
+    <aside className="w-80 border-l border-slate-300/40 dark:border-white/10 flex flex-col">
+      <div className="p-3 border-b border-slate-300/40 dark:border-white/10 flex justify-between items-center">
+        <span className="text-xs uppercase text-slate-500 dark:text-slate-400">Portfolio</span>
+        <button onClick={() => setOpen(true)} className="btn-secondary text-xs px-2 py-1">+ Add</button>
       </div>
 
-      <div className="p-3 border-b border-slate-800">
-        <div className="text-xs text-slate-500">총 평가액</div>
-        <div className="text-xl tabular-nums">
-          {valuation?.total_value ? formatMoney(valuation.total_value) : "—"} {valuation?.total_value_currency ?? ""}
+      <div className="p-3 border-b border-slate-300/40 dark:border-white/10">
+        <div className="text-xs text-slate-500 dark:text-slate-400">총 평가액</div>
+        <div className="text-xl tabular-nums text-slate-900 dark:text-slate-100">
+          {valuation?.total_value ? formatMoney(valuation.total_value) : "—"} <span className="text-slate-500 dark:text-slate-400">{valuation?.total_value_currency ?? ""}</span>
         </div>
-        <div className={"text-xs " + ((Number(valuation?.total_pnl ?? "0") >= 0) ? "text-emerald-400" : "text-rose-400")}>
+        <div className={"text-xs " + ((Number(valuation?.total_pnl ?? "0") >= 0) ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
           P&L: {valuation?.total_pnl ? formatMoney(valuation.total_pnl) : "—"}
         </div>
       </div>
 
       {(!valuation || valuation.holdings.length === 0) ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center text-xs text-slate-500 px-4 py-8 gap-2">
+        <div className="flex-1 flex flex-col items-center justify-center text-center text-xs text-slate-500 dark:text-slate-400 px-4 py-8 gap-2">
           <p>보유 자산을 입력하면 실시간 평가/손익이 표시됩니다</p>
           <button
             onClick={() => setOpen(true)}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-slate-50"
+            className="btn-primary"
           >
             + 자산 추가
           </button>
@@ -62,18 +62,18 @@ export function PortfolioPanel() {
       ) : (
         <ul className="flex-1 overflow-y-auto text-xs">
           {valuation.holdings.map((h, i) => (
-            <li key={i} className="p-2 border-b border-slate-900 flex justify-between">
+            <li key={i} className="p-2 border-b border-slate-300/40 dark:border-white/10 flex justify-between hover:bg-white/30 dark:hover:bg-white/5">
               <div>
-                <div>{h.symbol.ticker}</div>
-                <div className="text-slate-500">cost: {formatMoney(h.cost_basis)}</div>
+                <div className="text-slate-700 dark:text-slate-200">{h.symbol.ticker}</div>
+                <div className="text-slate-500 dark:text-slate-500">cost: {formatMoney(h.cost_basis)}</div>
               </div>
               <div className="text-right">
-                <div>{h.market_value ? formatMoney(h.market_value) : "—"}</div>
-                <div className={(Number(h.pnl ?? "0") >= 0) ? "text-emerald-400" : "text-rose-400"}>
+                <div className="text-slate-700 dark:text-slate-200 tabular-nums">{h.market_value ? formatMoney(h.market_value) : "—"}</div>
+                <div className={"tabular-nums " + ((Number(h.pnl ?? "0") >= 0) ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                   {h.pnl ? formatMoney(h.pnl) : "—"}
                 </div>
               </div>
-              <button onClick={() => remove(h.symbol)} className="ml-2 text-slate-600 hover:text-rose-400">×</button>
+              <button onClick={() => remove(h.symbol)} className="ml-2 text-slate-500 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400">×</button>
             </li>
           ))}
         </ul>
@@ -144,23 +144,23 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[28rem] space-y-4"
+        className="glass-panel rounded-lg p-5 w-[28rem] space-y-4"
       >
-        <h3 className="text-lg font-semibold">보유 자산 추가</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">보유 자산 추가</h3>
 
         {watchlist.length === 0 ? (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             먼저 좌측 워치리스트에 종목을 추가해 주세요. 추가된 종목 중에서 골라 보유량과 평단가를
             입력하면 실시간 평가가 시작됩니다.
           </p>
         ) : (
           <>
             <div className="block text-sm">
-              <span className="text-slate-300">종목</span>
+              <span className="text-slate-700 dark:text-slate-300">종목</span>
               <Select
                 value={selectedKey}
                 options={watchlist.map((s) => ({ value: symbolKey(s), label: symbolLabel(s) }))}
@@ -170,36 +170,36 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
             </div>
 
             <label className="block text-sm">
-              <span className="text-slate-300">보유 수량</span>
+              <span className="text-slate-700 dark:text-slate-300">보유 수량</span>
               <input
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
                 inputMode="decimal"
                 placeholder="예: 0.5"
-                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
+                className="mt-1 w-full glass-inset rounded px-3 py-2.5 text-base text-slate-900 dark:text-slate-100"
               />
             </label>
 
             <label className="block text-sm">
-              <span className="text-slate-300">평단가 ({costCurrency})</span>
+              <span className="text-slate-700 dark:text-slate-300">평단가 ({costCurrency})</span>
               <input
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
                 inputMode="decimal"
                 placeholder="1주/1개당 평균 매입가"
-                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
+                className="mt-1 w-full glass-inset rounded px-3 py-2.5 text-base text-slate-900 dark:text-slate-100"
               />
             </label>
           </>
         )}
 
-        {error && <div className="text-rose-400 text-xs">{error}</div>}
+        {error && <div className="text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
         <div className="flex gap-2 justify-end">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm rounded bg-slate-800 hover:bg-slate-700">취소</button>
+          <button type="button" onClick={onClose} className="btn-secondary text-sm">취소</button>
           <button
             type="submit"
             disabled={busy || watchlist.length === 0}
-            className="px-3 py-1.5 text-sm rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {busy ? "저장 중..." : "저장"}
           </button>

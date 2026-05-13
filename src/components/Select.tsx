@@ -42,15 +42,15 @@ export function Select({ value, options, onChange, placeholder, className = "" }
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full bg-slate-800 hover:bg-slate-700 rounded px-3 py-2.5 text-base text-left flex items-center justify-between gap-2"
+        className="w-full glass-inset rounded px-3 py-2.5 text-base text-left flex items-center justify-between gap-2 text-slate-700 dark:text-slate-200"
       >
-        <span className={selected ? "" : "text-slate-500"}>
+        <span className={selected ? "" : "text-slate-500 dark:text-slate-500"}>
           {selected?.label ?? placeholder ?? "선택"}
         </span>
-        <span className="text-slate-400 text-xs">▾</span>
+        <span className="text-slate-500 dark:text-slate-400 text-xs">▾</span>
       </button>
       {open && (
-        <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded shadow-xl max-h-72 overflow-y-auto py-1">
+        <ul className="absolute z-50 left-0 right-0 top-full mt-1 glass-panel rounded shadow-xl max-h-72 overflow-y-auto py-1">
           {options.map((o) => {
             const isSelected = o.value === value;
             return (
@@ -58,8 +58,10 @@ export function Select({ value, options, onChange, placeholder, className = "" }
                 key={o.value}
                 onClick={() => { onChange(o.value); setOpen(false); }}
                 className={
-                  "px-3 py-2.5 text-base cursor-pointer hover:bg-slate-700 " +
-                  (isSelected ? "bg-slate-800 text-emerald-400" : "text-slate-100")
+                  "px-3 py-2.5 text-base cursor-pointer " +
+                  (isSelected
+                    ? "bg-emerald-600/15 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-white/30 dark:hover:bg-white/5")
                 }
               >
                 {o.label}
@@ -67,7 +69,7 @@ export function Select({ value, options, onChange, placeholder, className = "" }
             );
           })}
           {options.length === 0 && (
-            <li className="px-3 py-2.5 text-base text-slate-500">옵션 없음</li>
+            <li className="px-3 py-2.5 text-base text-slate-500 dark:text-slate-500">옵션 없음</li>
           )}
         </ul>
       )}
