@@ -1,6 +1,6 @@
 # ai-stock — Context & Ubiquitous Language
 
-> Last updated: 2026-05-13 (M1 complete)
+> Last updated: 2026-05-13 (M2 complete)
 
 ## Bounded Contexts
 
@@ -25,7 +25,6 @@
 
 ## Current State
 
-- **M1 complete.** Working cross-platform Tauri app with hybrid main window + always-on-top floating widget, Crypto (Binance + CoinGecko) + US/Forex/Commodity (Yahoo + optional Finnhub) coverage, watchlist + portfolio P&L + adjustable widget transparency. ~45 backend unit tests + 1 frontend store test + E2E smoke.
-- **M2 next** — KR stocks (Naver / KIS), technical indicators (MA, RSI, MACD, Bollinger), price-threshold alerts + desktop notifications, forex/commodities polish.
-- **M3 after** — BYOK AI (OpenAI/Anthropic/Gemini), news providers, commentary/analysis prompts.
-- **Known M1 limitations:** Currency widened to 3-5 char ASCII to support stablecoins (USDT/USDC). Tauri CSP loose (default-src 'self' + https connect-src) — tighten in M2. cargo-deny limited to `bans` check (license/advisory subset blocked by transitive gtk-rs/MPL deps — revisit when tauri upstream migrates off gtk3).
+- **M2 complete.** Technical indicators (SMA/EMA/RSI/MACD/Bollinger), price-threshold alerts with desktop notifications, KR stocks via Naver scraping. CSP tightened to explicit provider origins. Poll interval driven by settings at startup.
+- **M3 next** — BYOK AI (OpenAI/Anthropic/Gemini), news providers, commentary/analysis prompts.
+- **Known M2 limitations:** Naver KR scraping is fragile (no API). KIS OpenAPI deferred. AlertService runs synchronously inside the poll loop (no separate worker). Poll-interval change requires app restart.

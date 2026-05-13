@@ -69,3 +69,38 @@
 - DDD layer boundary enforced via scripts/check-layer-boundary.sh (cargo-deny `wrappers` semantics didn't match the plan; pivoted in commit 47b3058).
 - Currency value object widened to 3-5 char ASCII to support USDT/USDC.
 - Next: draft M2 plan (KR stocks via Naver, technical indicators, alerts + notifications, forex/commodities polish).
+
+## 2026-05-13 (M2)
+
+### Phase 7 — Technical indicators
+
+- [x] Task 7.1: SMA (windowed sum).
+- [x] Task 7.2: EMA (alpha smoothing from SMA seed).
+- [x] Task 7.3: RSI (Wilder smoothing, proptest invariant).
+- [x] Task 7.4: MACD(12,26,9) + Bollinger(20, 2).
+- [x] Task 7.5: IndicatorService + indicators_for IPC.
+
+### Phase 8 — Alerts
+
+- [x] Task 8.1: AlertRule + AlertEvaluator (pure).
+- [x] Task 8.2: alerts migration + AlertRepo + SqliteAlertRepo.
+- [x] Task 8.3: AlertService.
+- [x] Task 8.4: TauriNotifier (app crate).
+- [x] Task 8.5: Wire into poll loop + IPC commands.
+- [x] Task 8.6: Frontend AlertsPanel.
+
+### Phase 9 — KR stocks
+
+- [x] Task 9.1: NaverKrProvider scraping finance.naver.com.
+
+### Phase 10 — Hygiene + close-out
+
+- [x] Task 10.1: Poll interval from settings at startup.
+- [x] Task 10.2: Tighten CSP to explicit provider origins.
+- [x] Task 10.3: ADR 0003 + CONTEXT update + this progress entry.
+
+## 2026-05-13 — M2 complete
+
+- Indicators in domain, alerts bounded context, KR stocks via Naver, CSP tightened, settings-driven poll.
+- Tests: ~64 backend unit tests (~46 domain + 8 application + 10 infrastructure), 1 frontend, E2E unchanged.
+- Next: draft M3 plan (BYOK AI, news, commentary).
