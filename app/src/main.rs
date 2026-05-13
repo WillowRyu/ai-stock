@@ -39,35 +39,54 @@ async fn main() {
                 let state = wiring::assemble(handle.clone(), db_path, std::env::var("FINNHUB_API_KEY").ok()).await;
                 handle.manage(state);
 
-                // Periodic event emit loop (every 1s): refresh quotes, evaluate alerts,
-                // broadcast snapshot to UI.
+                // Periodic refresh + emit loop. This loop owns the polling cadence
+                // so it can capture per-symbol provider errors from `RefreshOutcome`
+                // and emit them to the UI as `provider-error` events alongside the
+                // usual `quote-update` snapshot broadcast.
                 let state = handle.state::<wiring::AppState>();
+                let market = state.market.clone();
+                let alerts = state.alerts.clone();
+                let initial_interval = state
+                    .settings
+                    .get()
+                    .await
+                    .map(|s| s.poll_interval_secs.max(1))
+                    .unwrap_or(5) as u64;
+                let mut ticker = tokio::time::interval(Duration::from_secs(initial_interval));
+                ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
                 loop {
-                    let snap_map = state.market.snapshot().await;
-                    let quotes: Vec<domain::quote::Quote> = snap_map.values().cloned().collect();
-                    let alerts_svc = state.alerts.clone();
-                    for q in &quotes {
-                        let _ = alerts_svc.evaluate_quote(q).await;
+                    ticker.tick().await;
+                    match market.refresh().await {
+                        Ok(outcome) => {
+                            for err in &outcome.errors {
+                                let _ = handle.emit("provider-error", err);
+                            }
+                            for q in &outcome.quotes {
+                                let _ = alerts.evaluate_quote(q).await;
+                            }
+                            let snap_map = market.snapshot().await;
+                            let dto: Vec<ipc::QuoteDto> = snap_map.values().map(|q| ipc::QuoteDto {
+                                symbol: ipc::SymbolDto {
+                                    kind: match q.symbol.kind() {
+                                        domain::asset::AssetKind::Crypto => "crypto".into(),
+                                        domain::asset::AssetKind::UsEquity => "us".into(),
+                                        domain::asset::AssetKind::KrEquity => "kr".into(),
+                                        domain::asset::AssetKind::Forex => "fx".into(),
+                                        domain::asset::AssetKind::Commodity => "com".into(),
+                                    },
+                                    ticker: q.symbol.ticker().into(),
+                                    quote_currency: q.symbol.quote_currency().map(|x| x.into()),
+                                },
+                                price: q.price.money().amount().to_string(),
+                                currency: q.price.money().currency().as_str().to_string(),
+                                change_24h: q.change_24h.map(|d| d.to_string()),
+                                observed_at: q.observed_at.to_rfc3339(),
+                            }).collect();
+                            let _ = handle.emit("quote-update", dto);
+                        }
+                        Err(e) => tracing::warn!(error = ?e, "refresh failed"),
                     }
-                    let dto: Vec<ipc::QuoteDto> = quotes.iter().map(|q| ipc::QuoteDto {
-                        symbol: ipc::SymbolDto {
-                            kind: match q.symbol.kind() {
-                                domain::asset::AssetKind::Crypto => "crypto".into(),
-                                domain::asset::AssetKind::UsEquity => "us".into(),
-                                domain::asset::AssetKind::KrEquity => "kr".into(),
-                                domain::asset::AssetKind::Forex => "fx".into(),
-                                domain::asset::AssetKind::Commodity => "com".into(),
-                            },
-                            ticker: q.symbol.ticker().into(),
-                            quote_currency: q.symbol.quote_currency().map(|x| x.into()),
-                        },
-                        price: q.price.money().amount().to_string(),
-                        currency: q.price.money().currency().as_str().to_string(),
-                        change_24h: q.change_24h.map(|d| d.to_string()),
-                        observed_at: q.observed_at.to_rfc3339(),
-                    }).collect();
-                    let _ = handle.emit("quote-update", dto);
-                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             });
             Ok(())

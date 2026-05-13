@@ -16,6 +16,19 @@ pub enum MarketError {
     NoProvider(String),
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SymbolError {
+    pub symbol_canonical: String,
+    pub provider: String, // "" if no provider supported
+    pub error: String,
+}
+
+#[derive(Debug, Default)]
+pub struct RefreshOutcome {
+    pub quotes: Vec<Quote>,
+    pub errors: Vec<SymbolError>,
+}
+
 pub struct MarketService {
     watchlist_repo: Arc<dyn WatchlistRepo>,
     providers: Vec<Arc<dyn AssetProvider>>,
@@ -48,12 +61,15 @@ impl MarketService {
         Ok(())
     }
 
-    /// Refresh quotes for every watchlist symbol. Per-symbol failures are logged
-    /// and do not fail the whole refresh; if a supporting provider returns an error,
-    /// the next supporting provider is tried in order.
-    pub async fn refresh(&self) -> Result<Vec<Quote>, MarketError> {
+    /// Refresh quotes for every watchlist symbol. Per-symbol failures do not
+    /// fail the whole refresh; if a supporting provider returns an error or
+    /// empty result, the next supporting provider is tried in order. Failures
+    /// after exhausting all supporting providers (and "no provider supports
+    /// this symbol" cases) are returned as `SymbolError`s on the outcome so
+    /// callers (e.g. the app's event emit loop) can surface them to the UI.
+    pub async fn refresh(&self) -> Result<RefreshOutcome, MarketError> {
         let wl = self.watchlist_repo.load().await?;
-        let mut all_quotes = Vec::new();
+        let mut outcome = RefreshOutcome::default();
 
         for symbol in wl.symbols() {
             let supporting: Vec<&Arc<dyn AssetProvider>> = self
@@ -66,15 +82,21 @@ impl MarketService {
                     symbol = %symbol.to_canonical_string(),
                     "no provider supports symbol; skipping",
                 );
+                outcome.errors.push(SymbolError {
+                    symbol_canonical: symbol.to_canonical_string(),
+                    provider: String::new(),
+                    error: "no provider supports this symbol".into(),
+                });
                 continue;
             }
             let mut got = false;
+            let mut last_err: Option<SymbolError> = None;
             for provider in &supporting {
                 match provider.fetch_quotes(std::slice::from_ref(symbol)).await {
                     Ok(qs) if !qs.is_empty() => {
                         for q in qs {
                             self.last_quotes.write().await.insert(q.symbol.clone(), q.clone());
-                            all_quotes.push(q);
+                            outcome.quotes.push(q);
                         }
                         got = true;
                         break;
@@ -85,6 +107,11 @@ impl MarketService {
                             symbol = %symbol.to_canonical_string(),
                             "provider returned empty result; trying next",
                         );
+                        last_err = Some(SymbolError {
+                            symbol_canonical: symbol.to_canonical_string(),
+                            provider: provider.name().into(),
+                            error: "empty result".into(),
+                        });
                     }
                     Err(e) => {
                         tracing::warn!(
@@ -93,6 +120,11 @@ impl MarketService {
                             error = ?e,
                             "provider failed; trying next",
                         );
+                        last_err = Some(SymbolError {
+                            symbol_canonical: symbol.to_canonical_string(),
+                            provider: provider.name().into(),
+                            error: e.to_string(),
+                        });
                     }
                 }
             }
@@ -101,9 +133,12 @@ impl MarketService {
                     symbol = %symbol.to_canonical_string(),
                     "all providers failed for symbol",
                 );
+                if let Some(err) = last_err {
+                    outcome.errors.push(err);
+                }
             }
         }
-        Ok(all_quotes)
+        Ok(outcome)
     }
 
     pub async fn snapshot(&self) -> HashMap<Symbol, Quote> {
@@ -167,8 +202,9 @@ mod tests {
         });
 
         let svc = MarketService::new(Arc::new(wl_repo), vec![Arc::new(crypto), Arc::new(stock)]);
-        let quotes = svc.refresh().await.unwrap();
-        assert_eq!(quotes.len(), 2);
+        let outcome = svc.refresh().await.unwrap();
+        assert_eq!(outcome.quotes.len(), 2);
+        assert!(outcome.errors.is_empty());
 
         let snap = svc.snapshot().await;
         assert!(snap.contains_key(&s_btc()));
@@ -187,8 +223,10 @@ mod tests {
         crypto.expect_supports().return_const(false);
 
         let svc = MarketService::new(Arc::new(wl_repo), vec![Arc::new(crypto)]);
-        let quotes = svc.refresh().await.unwrap();
-        assert!(quotes.is_empty());
+        let outcome = svc.refresh().await.unwrap();
+        assert!(outcome.quotes.is_empty());
+        assert_eq!(outcome.errors.len(), 1);
+        assert!(outcome.errors[0].provider.is_empty());
     }
 
     #[tokio::test]
@@ -217,8 +255,9 @@ mod tests {
             Arc::new(wl_repo),
             vec![Arc::new(failing), Arc::new(ok)],
         );
-        let quotes = svc.refresh().await.unwrap();
-        assert_eq!(quotes.len(), 1);
-        assert_eq!(quotes[0].price.money().amount(), dec!(295));
+        let outcome = svc.refresh().await.unwrap();
+        assert_eq!(outcome.quotes.len(), 1);
+        assert!(outcome.errors.is_empty());
+        assert_eq!(outcome.quotes[0].price.money().amount(), dec!(295));
     }
 }

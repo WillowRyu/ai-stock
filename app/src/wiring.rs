@@ -3,8 +3,7 @@ use application::{
     alert_service::AlertService,
     market_service::MarketService, portfolio_service::PortfolioService,
     settings_service::SettingsService,
-    ports::{ai_provider::AiProvider, asset_provider::AssetProvider, http_client::HttpClient, news_provider::NewsProvider, repos::SettingsRepo},
-    poll_scheduler::PollScheduler,
+    ports::{ai_provider::AiProvider, asset_provider::AssetProvider, http_client::HttpClient, news_provider::NewsProvider},
 };
 use infrastructure::{
     clock::SystemClock, http::ReqwestHttpClient, keyring_secrets::KeyringSecretStore,
@@ -64,15 +63,11 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
     let settings = Arc::new(SettingsService::new(settings_repo.clone()));
     let secrets = Arc::new(KeyringSecretStore::new("dev.willowryu.aistock"));
 
-    // Poll interval is read once at startup from SettingsRepo. Live updates
-    // (settings change → scheduler restart) are deferred to M3.
-    let initial_interval = settings_repo
-        .load()
-        .await
-        .map(|s| s.poll_interval_secs.max(1))
-        .unwrap_or(5);
-    let (scheduler, _rx) = PollScheduler::new(market.clone(), clock_arc.clone());
-    scheduler.start(std::time::Duration::from_secs(initial_interval as u64));
+    // NOTE: The periodic refresh loop is driven from `main.rs` rather than
+    // `PollScheduler` here so the app event loop can capture per-symbol
+    // provider errors from `RefreshOutcome` and emit them to the UI as
+    // `provider-error` events. `PollScheduler` is still available as a
+    // building block (and tested) but is no longer started from `assemble`.
 
     let news: Vec<Arc<dyn NewsProvider>> = vec![
         Arc::new(YahooNewsRss::new(http.clone())),

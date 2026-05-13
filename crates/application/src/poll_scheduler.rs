@@ -27,8 +27,9 @@ impl PollScheduler {
             let mut counter: u64 = 0;
             loop {
                 let _ = self.clock.now(); // forces dyn Clock to be live (and easy to mock-call in tests)
-                if let Err(e) = self.market.refresh().await {
-                    tracing::warn!(error = ?e, "poll refresh failed");
+                match self.market.refresh().await {
+                    Ok(_outcome) => {}
+                    Err(e) => tracing::warn!(error = ?e, "poll refresh failed"),
                 }
                 counter = counter.wrapping_add(1);
                 let _ = self.tick_tx.send(counter);
