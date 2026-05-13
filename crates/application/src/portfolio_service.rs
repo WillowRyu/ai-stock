@@ -1,7 +1,7 @@
 use crate::market_service::MarketService;
 use crate::ports::repos::{PortfolioRepo, RepoError};
 use domain::{
-    holding::Holding, portfolio_calc, symbol::Symbol,
+    fx::FxRates, holding::Holding, money::Currency, portfolio_calc, symbol::Symbol,
 };
 use std::sync::Arc;
 use thiserror::Error;
@@ -35,7 +35,11 @@ impl PortfolioService {
     pub async fn valuation(&self) -> Result<portfolio_calc::PortfolioValuation, PortfolioError> {
         let portfolio = self.repo.load().await?;
         let quotes = self.market.snapshot().await;
-        Ok(portfolio_calc::evaluate(&portfolio, &quotes))
+        // Commit 1 caller-side adapter: aggregate in USD with an empty rate book.
+        // Commit 2 will thread display currency + a live FxRateBook through here.
+        let fx = FxRates::new();
+        let display = Currency::new("USD").unwrap();
+        Ok(portfolio_calc::evaluate(&portfolio, &quotes, &fx, display))
     }
 }
 
