@@ -121,6 +121,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "domain",
+ "futures",
  "mockall",
  "rust_decimal",
  "rust_decimal_macros",

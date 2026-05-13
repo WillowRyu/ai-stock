@@ -1,3 +1,4 @@
+pub mod ai_provider;
 pub mod asset_provider;
 pub mod clock;
 pub mod http_client;

@@ -13,6 +13,7 @@ tracing.workspace = true
 serde.workspace = true
 chrono.workspace = true
 rust_decimal.workspace = true
+futures.workspace = true
 
 [dev-dependencies]
 mockall.workspace = true

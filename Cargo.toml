@@ -26,3 +26,4 @@ proptest = "1"
 insta = { version = "1", features = ["yaml"] }
 tokio-test = "0.4"
 tempfile = "3"
+futures = "0.3"
