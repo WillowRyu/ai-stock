@@ -34,7 +34,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' https: ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'"
+      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' ipc: http://ipc.localhost https://api.binance.com https://api.coingecko.com https://query1.finance.yahoo.com https://finnhub.io https://finance.naver.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'"
     }
   },
   "bundle": {
