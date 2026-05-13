@@ -13,7 +13,7 @@ tracing.workspace = true
 serde.workspace = true
 chrono.workspace = true
 rust_decimal.workspace = true
-mockall = { workspace = true }
 
 [dev-dependencies]
+mockall.workspace = true
 tokio-test.workspace = true
