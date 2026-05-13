@@ -6,6 +6,7 @@ import { AddSymbolDialog } from "./components/AddSymbolDialog";
 import { PortfolioPanel } from "./components/PortfolioPanel";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { AiPanel } from "./components/AiPanel";
+import { Settings } from "./components/Settings";
 import { Toasts } from "./components/Toasts";
 import { useQuotesStore } from "./lib/state/quotesStore";
 import { onQuoteUpdate, onProviderError, ipc, type SymbolDto } from "./lib/ipc";
@@ -17,6 +18,7 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
   const [showAi, setShowAi] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const apply = useQuotesStore((s) => s.apply);
   const refreshPortfolio = usePortfolioStore((s) => s.refresh);
   const pushToast = useToastStore((s) => s.push);
@@ -60,6 +62,7 @@ export default function App() {
           <button onClick={() => setShowAi(true)} className="btn-secondary text-xs px-2 py-1">AI</button>
           <button onClick={() => setShowAlerts(true)} className="btn-secondary text-xs px-2 py-1">알림</button>
           <button onClick={() => invoke("widget_toggle")} className="btn-secondary text-xs px-2 py-1">위젯</button>
+          <button onClick={() => setShowSettings(true)} className="btn-secondary text-xs px-2 py-1">설정</button>
         </div>
       </header>
       <div className="flex flex-1 min-h-0">
@@ -70,6 +73,7 @@ export default function App() {
       {adding && <AddSymbolDialog onClose={() => setAdding(false)} />}
       {showAlerts && <AlertsPanel onClose={() => setShowAlerts(false)} />}
       {showAi && <AiPanel symbol={selected} onClose={() => setShowAi(false)} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <Toasts />
     </div>
   );
