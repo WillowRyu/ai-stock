@@ -26,23 +26,35 @@ export function PortfolioPanel() {
         </div>
       </div>
 
-      <ul className="flex-1 overflow-y-auto text-xs">
-        {valuation?.holdings.map((h, i) => (
-          <li key={i} className="p-2 border-b border-slate-900 flex justify-between">
-            <div>
-              <div>{h.symbol.ticker}</div>
-              <div className="text-slate-500">cost: {formatMoney(h.cost_basis)}</div>
-            </div>
-            <div className="text-right">
-              <div>{h.market_value ? formatMoney(h.market_value) : "—"}</div>
-              <div className={(Number(h.pnl ?? "0") >= 0) ? "text-emerald-400" : "text-rose-400"}>
-                {h.pnl ? formatMoney(h.pnl) : "—"}
+      {(!valuation || valuation.holdings.length === 0) ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center text-xs text-slate-500 px-4 py-8 gap-2">
+          <p>보유 자산을 입력하면 실시간 평가/손익이 표시됩니다</p>
+          <button
+            onClick={() => setOpen(true)}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-slate-50"
+          >
+            + 자산 추가
+          </button>
+        </div>
+      ) : (
+        <ul className="flex-1 overflow-y-auto text-xs">
+          {valuation.holdings.map((h, i) => (
+            <li key={i} className="p-2 border-b border-slate-900 flex justify-between">
+              <div>
+                <div>{h.symbol.ticker}</div>
+                <div className="text-slate-500">cost: {formatMoney(h.cost_basis)}</div>
               </div>
-            </div>
-            <button onClick={() => remove(h.symbol)} className="ml-2 text-slate-600 hover:text-rose-400">×</button>
-          </li>
-        ))}
-      </ul>
+              <div className="text-right">
+                <div>{h.market_value ? formatMoney(h.market_value) : "—"}</div>
+                <div className={(Number(h.pnl ?? "0") >= 0) ? "text-emerald-400" : "text-rose-400"}>
+                  {h.pnl ? formatMoney(h.pnl) : "—"}
+                </div>
+              </div>
+              <button onClick={() => remove(h.symbol)} className="ml-2 text-slate-600 hover:text-rose-400">×</button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {open && <AddHoldingDialog onClose={() => setOpen(false)} onSubmit={upsert} />}
     </aside>

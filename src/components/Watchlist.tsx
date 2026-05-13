@@ -32,6 +32,17 @@ export function Watchlist({ selected, onSelect, onAdd }: Props) {
         <span className="text-xs uppercase text-slate-400">Watchlist</span>
         <button onClick={onAdd} className="text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700">+ Add</button>
       </div>
+      {symbols.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center text-xs text-slate-500 px-4 py-8 gap-2">
+          <p>관심 있는 종목을 추가해 보세요</p>
+          <button
+            onClick={onAdd}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-slate-50"
+          >
+            + 종목 추가
+          </button>
+        </div>
+      ) : (
       <ul className="flex-1 overflow-y-auto">
         {symbols.map((s) => {
           const q = quotes[quoteKey(s)];
@@ -67,6 +78,7 @@ export function Watchlist({ selected, onSelect, onAdd }: Props) {
           );
         })}
       </ul>
+      )}
     </aside>
   );
 }
