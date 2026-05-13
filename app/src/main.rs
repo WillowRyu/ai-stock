@@ -46,6 +46,7 @@ async fn main() {
                 let state = handle.state::<wiring::AppState>();
                 let market = state.market.clone();
                 let alerts = state.alerts.clone();
+                let settings = state.settings.clone();
 
                 // Background FX rate refresh. Fetches one daily candle for a handful
                 // of FX pairs via the existing market provider chain (Yahoo handles
@@ -66,17 +67,17 @@ async fn main() {
                         refresh_fx_rates(&fx_market, &fx_book, &fx_emit).await;
                     }
                 });
-                let initial_interval = state
-                    .settings
-                    .get()
-                    .await
-                    .map(|s| s.poll_interval_secs.max(1))
-                    .unwrap_or(5) as u64;
-                let mut ticker = tokio::time::interval(Duration::from_secs(initial_interval));
-                ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
+                // Re-read the poll interval each tick so settings changes take effect
+                // on the very next refresh without restarting the app.
                 loop {
-                    ticker.tick().await;
+                    let interval_secs = settings
+                        .get()
+                        .await
+                        .map(|s| s.poll_interval_secs)
+                        .unwrap_or(5)
+                        .clamp(1, 300) as u64;
+
                     match market.refresh().await {
                         Ok(outcome) => {
                             for err in &outcome.errors {
@@ -107,6 +108,7 @@ async fn main() {
                         }
                         Err(e) => tracing::warn!(error = ?e, "refresh failed"),
                     }
+                    tokio::time::sleep(Duration::from_secs(interval_secs)).await;
                 }
             });
             Ok(())
