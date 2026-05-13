@@ -6,9 +6,11 @@ import { AddSymbolDialog } from "./components/AddSymbolDialog";
 import { PortfolioPanel } from "./components/PortfolioPanel";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { AiPanel } from "./components/AiPanel";
+import { Toasts } from "./components/Toasts";
 import { useQuotesStore } from "./lib/state/quotesStore";
-import { onQuoteUpdate, ipc, type SymbolDto } from "./lib/ipc";
+import { onQuoteUpdate, onProviderError, ipc, type SymbolDto } from "./lib/ipc";
 import { usePortfolioStore } from "./lib/state/portfolioStore";
+import { useToastStore } from "./lib/state/toastStore";
 
 export default function App() {
   const [selected, setSelected] = useState<SymbolDto | null>(null);
@@ -17,16 +19,38 @@ export default function App() {
   const [showAi, setShowAi] = useState(false);
   const apply = useQuotesStore((s) => s.apply);
   const refreshPortfolio = usePortfolioStore((s) => s.refresh);
+  const pushToast = useToastStore((s) => s.push);
 
   useEffect(() => {
     ipc.quotesSnapshot().then(apply);
     refreshPortfolio();
-    const unsub = onQuoteUpdate((updates) => {
-      apply(updates);
-      refreshPortfolio();
-    });
-    return () => { unsub.then((fn) => fn()); };
-  }, [apply, refreshPortfolio]);
+    // Per-(symbol, provider) toast dedupe window: rate-limit repeated errors
+    // (e.g. one outage producing one error per poll per symbol).
+    const lastShown = new Map<string, number>();
+    const TOAST_DEDUPE_MS = 60_000;
+    const subs: Array<Promise<() => void>> = [
+      onQuoteUpdate((updates) => {
+        apply(updates);
+        refreshPortfolio();
+      }),
+      onProviderError((err) => {
+        const key = `${err.symbol_canonical}|${err.provider}`;
+        const now = Date.now();
+        const last = lastShown.get(key) ?? 0;
+        if (now - last < TOAST_DEDUPE_MS) return;
+        lastShown.set(key, now);
+        pushToast({
+          kind: "warning",
+          title: `데이터 소스 오류 — ${err.symbol_canonical}`,
+          body: err.provider ? `${err.provider}: ${err.error}` : err.error,
+          ttl_ms: 6000,
+        });
+      }),
+    ];
+    return () => {
+      subs.forEach((p) => p.then((fn) => fn()));
+    };
+  }, [apply, refreshPortfolio, pushToast]);
 
   return (
     <div className="h-screen flex flex-col">
@@ -46,6 +70,7 @@ export default function App() {
       {adding && <AddSymbolDialog onClose={() => setAdding(false)} />}
       {showAlerts && <AlertsPanel onClose={() => setShowAlerts(false)} />}
       {showAi && <AiPanel symbol={selected} onClose={() => setShowAi(false)} />}
+      <Toasts />
     </div>
   );
 }

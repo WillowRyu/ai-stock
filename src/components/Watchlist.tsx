@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useWatchlistStore } from "../lib/state/watchlistStore";
 import { useQuotesStore, quoteKey } from "../lib/state/quotesStore";
@@ -16,6 +16,15 @@ export function Watchlist({ selected, onSelect, onAdd }: Props) {
   const quotes = useQuotesStore((s) => s.bySymbol);
 
   useEffect(() => { load(); }, [load]);
+
+  // Periodic tick so the stale indicator updates without a new quote arriving.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 5000);
+    return () => clearInterval(t);
+  }, []);
+  // Reference `tick` so React/ESLint sees the read; the value itself isn't used.
+  void tick;
 
   return (
     <aside className="w-64 border-r border-slate-800 flex flex-col">
@@ -36,19 +45,34 @@ export function Watchlist({ selected, onSelect, onAdd }: Props) {
                 <div className="text-sm">{s.ticker}</div>
                 <div className="text-[10px] text-slate-500 uppercase">{s.kind}</div>
               </div>
-              <div className="text-right">
-                <div className="text-sm tabular-nums">{q ? formatPrice(q.price) : "—"}</div>
-                <div className={clsx("text-[10px] tabular-nums",
-                  changePct === null ? "text-slate-500" : changePct >= 0 ? "text-emerald-400" : "text-rose-400")}>
-                  {changePct === null ? "" : `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`}
+              <div className="flex items-center gap-2">
+                {q && isStale(q.observed_at) && (
+                  <span
+                    title="Stale (>30s)"
+                    aria-label="stale"
+                    className="w-1.5 h-1.5 rounded-full bg-slate-500"
+                  />
+                )}
+                <div className="text-right">
+                  <div className="text-sm tabular-nums">{q ? formatPrice(q.price) : "—"}</div>
+                  <div className={clsx("text-[10px] tabular-nums",
+                    changePct === null ? "text-slate-500" : changePct >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                    {changePct === null ? "" : `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`}
+                  </div>
                 </div>
+                <button onClick={(e) => { e.stopPropagation(); remove(s); }}
+                  className="ml-2 text-slate-600 hover:text-rose-400 text-xs">×</button>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); remove(s); }}
-                className="ml-2 text-slate-600 hover:text-rose-400 text-xs">×</button>
             </li>
           );
         })}
       </ul>
     </aside>
   );
+}
+
+function isStale(observed_at: string): boolean {
+  const t = Date.parse(observed_at);
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t > 30_000;
 }

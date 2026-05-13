@@ -126,3 +126,13 @@ export const chartIpc = {
   fetch: (symbol: SymbolDto, days: number) =>
     invoke<ChartDataDto>("chart_data", { symbol, days }),
 };
+
+export interface ProviderErrorDto {
+  symbol_canonical: string;
+  provider: string;
+  error: string;
+}
+
+export function onProviderError(cb: (e: ProviderErrorDto) => void): Promise<UnlistenFn> {
+  return listen<ProviderErrorDto>("provider-error", (e) => cb(e.payload));
+}
