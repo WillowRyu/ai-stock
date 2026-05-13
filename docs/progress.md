@@ -104,3 +104,40 @@
 - Indicators in domain, alerts bounded context, KR stocks via Naver, CSP tightened, settings-driven poll.
 - Tests: ~64 backend unit tests (~46 domain + 8 application + 10 infrastructure), 1 frontend, E2E unchanged.
 - Next: draft M3 plan (BYOK AI, news, commentary).
+
+## 2026-05-13 (M3)
+
+### Phase 11 — AI provider trait + adapters
+
+- [x] Task 11.1: AiProvider port (streaming) + ports/mod.rs.
+- [x] Task 11.2: OpenAiProvider.
+- [x] Task 11.3: AnthropicProvider.
+- [x] Task 11.4: GeminiProvider.
+
+### Phase 12 — News providers
+
+- [x] Task 12.1: YahooNewsRss.
+- [x] Task 12.2: CoinDeskRss with symbol-alias filtering.
+
+### Phase 13 — AI service + prompt templates
+
+- [x] Task 13.1: PromptTemplate (domain) + AiService (application).
+
+### Phase 14 — Wiring + IPC
+
+- [x] Task 14.1: AiService wired in AppState; ai_* commands + ai-chunk/done/error events.
+
+### Phase 15 — Frontend
+
+- [x] Task 15.1: AiPanel + BYOK in Settings.
+
+### Phase 16 — Close-out
+
+- [x] Task 16.1: ADR 0004 + CONTEXT update + this entry.
+
+## 2026-05-13 — M3 complete
+
+- BYOK AI commentary streaming to the UI for any watchlist symbol.
+- ~71 backend unit tests (including 3 AI streaming wiremock tests and 2 RSS parsing tests), 1 frontend test.
+- Tauri app: M1 (core) + M2 (indicators/alerts/KR) + M3 (AI) all working together.
+- Next: post-M3 polish.

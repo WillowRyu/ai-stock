@@ -1,6 +1,6 @@
 # ai-stock — Context & Ubiquitous Language
 
-> Last updated: 2026-05-13 (M2 complete)
+> Last updated: 2026-05-13 (M3 complete)
 
 ## Bounded Contexts
 
@@ -25,6 +25,6 @@
 
 ## Current State
 
-- **M2 complete.** Technical indicators (SMA/EMA/RSI/MACD/Bollinger), price-threshold alerts with desktop notifications, KR stocks via Naver scraping. CSP tightened to explicit provider origins. Poll interval driven by settings at startup.
-- **M3 next** — BYOK AI (OpenAI/Anthropic/Gemini), news providers, commentary/analysis prompts.
-- **Known M2 limitations:** Naver KR scraping is fragile (no API). KIS OpenAPI deferred. AlertService runs synchronously inside the poll loop (no separate worker). Poll-interval change requires app restart.
+- **M3 complete.** BYOK AI with OpenAI / Anthropic / Gemini streaming, news context from Yahoo + CoinDesk, prompt template in domain. AI is toggleable; without a key set, the app works exactly as M2.
+- **Known M3 limitations:** Only commentary prompt type — chart-analysis and news-summary variants are stubs. No chat history (each request is independent). RSS news is best-effort and unsymmetric (Yahoo per-symbol, CoinDesk filtered). Stream cancellation isn't wired — closing the AI panel during generation lets it finish to completion.
+- **Next:** post-M3 polish (chart panel rendering historical candles with overlays, chat history, news summary prompts), then a 1.0 release.
