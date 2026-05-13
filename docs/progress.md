@@ -12,3 +12,12 @@
 - [ ] Task 0.3: Docs skeleton + ADR 0001.
 - [ ] Task 0.4: CI pipeline.
 - [ ] Task 0.5: cargo-deny layer enforcement.
+
+### Phase 1 — Domain layer
+
+- [x] Task 1.1: Money + currency-checked arithmetic.
+- [x] Task 1.2: Symbol + AssetKind.
+- [x] Task 1.3: Quantity, Percent, Price, TimeRange.
+- [x] Task 1.4: Quote, Candle.
+- [x] Task 1.5: Holding, Watchlist, Portfolio.
+- [x] Task 1.6: QuoteSanityCheck, PortfolioCalc.
