@@ -1,4 +1,5 @@
 //! Application services and trait ports. Depends on domain only.
+pub mod alert_service;
 pub mod indicator_service;
 pub mod market_service;
 pub mod poll_scheduler;
