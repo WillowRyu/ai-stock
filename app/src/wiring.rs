@@ -7,7 +7,7 @@ use application::{
 };
 use infrastructure::{
     clock::SystemClock, http::ReqwestHttpClient, keyring_secrets::KeyringSecretStore,
-    providers::{binance::BinanceProvider, coingecko::CoinGeckoProvider, finnhub::FinnhubProvider, yahoo::YahooProvider},
+    providers::{binance::BinanceProvider, coingecko::CoinGeckoProvider, finnhub::FinnhubProvider, naver_kr::NaverKrProvider, yahoo::YahooProvider},
     sqlite::{open, alert_repo::SqliteAlertRepo, watchlist_repo::SqliteWatchlistRepo, portfolio_repo::SqlitePortfolioRepo, settings_repo::SqliteSettingsRepo},
 };
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
@@ -47,6 +47,7 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
         Arc::new(BinanceProvider::new(http.clone())),
         Arc::new(CoinGeckoProvider::new(http.clone(), coingecko_ids)),
         Arc::new(YahooProvider::new(http.clone())),
+        Arc::new(NaverKrProvider::new(http.clone())),
     ];
     if let Some(key) = finnhub_key {
         providers.push(Arc::new(FinnhubProvider::new(http.clone(), key)));
