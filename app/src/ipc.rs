@@ -201,23 +201,27 @@ pub struct AlertRuleDto {
     pub id: i64,
     pub symbol: SymbolDto,
     pub condition: String,
-    pub threshold_amount: String,
-    pub threshold_currency: String,
+    pub threshold_amount: Option<String>,
+    pub threshold_currency: Option<String>,
     pub enabled: bool,
     pub cooldown_secs: u32,
 }
 
 fn rule_to_dto(r: &AlertRule) -> AlertRuleDto {
-    let (cond, thresh) = match &r.condition {
-        AlertCondition::Above(m) => ("above", m),
-        AlertCondition::Below(m) => ("below", m),
+    let (cond, thresh_amt, thresh_ccy): (&str, Option<String>, Option<String>) = match &r.condition {
+        AlertCondition::Above(m) => ("above", Some(m.amount().to_string()), Some(m.currency().as_str().into())),
+        AlertCondition::Below(m) => ("below", Some(m.amount().to_string()), Some(m.currency().as_str().into())),
+        AlertCondition::RsiAbove(t) => ("rsi_above", Some(t.to_string()), None),
+        AlertCondition::RsiBelow(t) => ("rsi_below", Some(t.to_string()), None),
+        AlertCondition::MacdGoldenCross => ("macd_golden", None, None),
+        AlertCondition::MacdDeathCross => ("macd_death", None, None),
     };
     AlertRuleDto {
         id: r.id,
         symbol: symbol_to_dto(&r.symbol),
         condition: cond.into(),
-        threshold_amount: thresh.amount().to_string(),
-        threshold_currency: thresh.currency().as_str().into(),
+        threshold_amount: thresh_amt,
+        threshold_currency: thresh_ccy,
         enabled: r.enabled,
         cooldown_secs: r.cooldown_secs,
     }
@@ -225,11 +229,22 @@ fn rule_to_dto(r: &AlertRule) -> AlertRuleDto {
 
 fn dto_to_rule(d: &AlertRuleDto) -> Result<AlertRule, String> {
     let symbol = dto_to_symbol(&d.symbol)?;
-    let amount = Decimal::from_str(&d.threshold_amount).map_err(|e| e.to_string())?;
-    let ccy = Currency::new(&d.threshold_currency).map_err(|e| format!("{e:?}"))?;
     let cond = match d.condition.as_str() {
-        "above" => AlertCondition::Above(Money::new(amount, ccy)),
-        "below" => AlertCondition::Below(Money::new(amount, ccy)),
+        "above" | "below" => {
+            let amt_s = d.threshold_amount.as_ref().ok_or_else(|| "missing threshold_amount".to_string())?;
+            let ccy_s = d.threshold_currency.as_ref().ok_or_else(|| "missing threshold_currency".to_string())?;
+            let amount = Decimal::from_str(amt_s).map_err(|e| e.to_string())?;
+            let ccy = Currency::new(ccy_s).map_err(|e| format!("{e:?}"))?;
+            let money = Money::new(amount, ccy);
+            if d.condition == "above" { AlertCondition::Above(money) } else { AlertCondition::Below(money) }
+        }
+        "rsi_above" | "rsi_below" => {
+            let amt_s = d.threshold_amount.as_ref().ok_or_else(|| "missing threshold for RSI alert".to_string())?;
+            let threshold = Decimal::from_str(amt_s).map_err(|e| e.to_string())?;
+            if d.condition == "rsi_above" { AlertCondition::RsiAbove(threshold) } else { AlertCondition::RsiBelow(threshold) }
+        }
+        "macd_golden" => AlertCondition::MacdGoldenCross,
+        "macd_death" => AlertCondition::MacdDeathCross,
         other => return Err(format!("unknown condition: {other}")),
     };
     Ok(AlertRule {

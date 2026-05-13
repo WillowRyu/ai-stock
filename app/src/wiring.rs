@@ -34,7 +34,6 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
 
     let notifier = Arc::new(TauriNotifier::new(app_handle.clone()));
     let clock_arc: Arc<dyn application::ports::clock::Clock> = Arc::new(SystemClock);
-    let alerts = Arc::new(AlertService::new(alert_repo, notifier, clock_arc.clone()));
 
     let http: Arc<dyn HttpClient> = Arc::new(ReqwestHttpClient::new());
 
@@ -59,6 +58,7 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
     providers.push(Arc::new(NaverKrProvider::new(http.clone())));
 
     let market = Arc::new(MarketService::new(watchlist_repo, providers));
+    let alerts = Arc::new(AlertService::new(alert_repo, notifier, clock_arc.clone(), market.clone()));
     let portfolio = Arc::new(PortfolioService::new(portfolio_repo, market.clone()));
     let settings = Arc::new(SettingsService::new(settings_repo.clone()));
     let secrets = Arc::new(KeyringSecretStore::new("dev.willowryu.aistock"));

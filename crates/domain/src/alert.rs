@@ -78,10 +78,10 @@ pub fn evaluate(
             }
         }
         AlertCondition::RsiAbove(threshold) => {
-            ctx.rsi_14.map_or(false, |v| v >= *threshold)
+            ctx.rsi_14.is_some_and(|v| v >= *threshold)
         }
         AlertCondition::RsiBelow(threshold) => {
-            ctx.rsi_14.map_or(false, |v| v <= *threshold)
+            ctx.rsi_14.is_some_and(|v| v <= *threshold)
         }
         AlertCondition::MacdGoldenCross => {
             match (ctx.prev_macd, ctx.prev_macd_signal, ctx.macd, ctx.macd_signal) {
