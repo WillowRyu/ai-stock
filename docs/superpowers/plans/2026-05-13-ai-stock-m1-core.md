@@ -1918,7 +1918,7 @@ git commit -m "feat(domain): add QuoteSanityCheck and PortfolioCalc"
 use chrono::{DateTime, Utc};
 use mockall::automock;
 
-#[automock]
+#[cfg_attr(test, automock)]
 pub trait Clock: Send + Sync {
     fn now(&self) -> DateTime<Utc>;
 }
@@ -1951,7 +1951,7 @@ pub enum HttpError {
     InvalidUrl(String),
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait HttpClient: Send + Sync {
     async fn get(
@@ -1979,7 +1979,7 @@ pub enum SecretError {
     Backend(String),
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait SecretStore: Send + Sync {
     async fn get(&self, key: &str) -> Result<String, SecretError>;
@@ -2005,7 +2005,7 @@ pub enum NotifyError {
     Backend(String),
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait Notifier: Send + Sync {
     async fn notify(&self, title: &str, body: &str) -> Result<(), NotifyError>;
@@ -2076,7 +2076,7 @@ pub enum ProviderError {
     Network(String),
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait AssetProvider: Send + Sync {
     fn name(&self) -> &'static str;
@@ -2118,7 +2118,7 @@ pub enum NewsError {
     Parse(String),
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait NewsProvider: Send + Sync {
     async fn fetch(&self, symbol: &Symbol, limit: usize) -> Result<Vec<Headline>, NewsError>;
@@ -2176,14 +2176,14 @@ pub enum RepoError {
     NotFound,
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait WatchlistRepo: Send + Sync {
     async fn load(&self) -> Result<Watchlist, RepoError>;
     async fn save(&self, watchlist: &Watchlist) -> Result<(), RepoError>;
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait PortfolioRepo: Send + Sync {
     async fn load(&self) -> Result<Portfolio, RepoError>;
@@ -2212,7 +2212,7 @@ impl Default for AppSettings {
     }
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait SettingsRepo: Send + Sync {
     async fn load(&self) -> Result<AppSettings, RepoError>;
