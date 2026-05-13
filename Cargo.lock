@@ -57,6 +57,7 @@ name = "ai-stock-app"
 version = "0.1.0"
 dependencies = [
  "application",
+ "async-trait",
  "chrono",
  "domain",
  "infrastructure",

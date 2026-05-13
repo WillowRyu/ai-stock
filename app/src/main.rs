@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ipc;
+#[allow(dead_code)] // TODO(M2 Phase 8.5): wired into AppState in next batch
+mod tauri_notifier;
 mod wiring;
 
 use std::time::Duration;
