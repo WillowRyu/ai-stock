@@ -6,8 +6,10 @@ import {
   type LineData,
   type HistogramData,
   type Time,
+  type PriceFormat,
 } from "lightweight-charts";
 import { chartIpc, type CandleInterval, type ChartDataDto, type SymbolDto } from "../lib/ipc";
+import { formatPrice } from "../lib/format";
 
 // Predefined (range × interval) combinations. Combinations are chosen so the
 // API returns roughly 100-500 bars per request, which both Binance (default
@@ -36,26 +38,46 @@ const COLORS = {
   signal: "#f472b6",
 };
 
+interface IndicatorVisibility {
+  sma20: boolean;
+  sma50: boolean;
+  rsi: boolean;
+  macd: boolean;
+}
+
 export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
   const priceRef = useRef<HTMLDivElement>(null);
   const rsiRef = useRef<HTMLDivElement>(null);
   const macdRef = useRef<HTMLDivElement>(null);
-  const chartsRef = useRef<{ price?: IChartApi; rsi?: IChartApi; macd?: IChartApi }>({});
+  const volumeRef = useRef<HTMLDivElement>(null);
+  const chartsRef = useRef<{
+    price?: IChartApi;
+    rsi?: IChartApi;
+    macd?: IChartApi;
+    volume?: IChartApi;
+  }>({});
   const [preset, setPreset] = useState<Preset>(PRESETS.find((p) => p.key === "3M")!);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [show, setShow] = useState<IndicatorVisibility>({
+    sma20: true,
+    sma50: true,
+    rsi: true,
+    macd: true,
+  });
 
   function disposeCharts() {
     chartsRef.current.price?.remove();
     chartsRef.current.rsi?.remove();
     chartsRef.current.macd?.remove();
+    chartsRef.current.volume?.remove();
     chartsRef.current = {};
   }
 
   useEffect(() => () => disposeCharts(), []);
 
   useEffect(() => {
-    if (!symbol || !priceRef.current || !rsiRef.current || !macdRef.current) return;
+    if (!symbol || !priceRef.current) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -64,7 +86,7 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
       .fetch(symbol, preset.days, preset.interval)
       .then((data) => {
         if (cancelled) return;
-        renderCharts(data, preset.timeVisible);
+        renderCharts(data, preset.timeVisible, show);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -79,11 +101,20 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol?.kind, symbol?.ticker, symbol?.quote_currency, preset.key]);
+  }, [
+    symbol?.kind,
+    symbol?.ticker,
+    symbol?.quote_currency,
+    preset.key,
+    show.sma20,
+    show.sma50,
+    show.rsi,
+    show.macd,
+  ]);
 
-  function renderCharts(data: ChartDataDto, timeVisible: boolean) {
+  function renderCharts(data: ChartDataDto, timeVisible: boolean, vis: IndicatorVisibility) {
     disposeCharts();
-    if (!priceRef.current || !rsiRef.current || !macdRef.current) return;
+    if (!priceRef.current) return;
     if (data.candles.length === 0) {
       setError("No historical data for this symbol");
       return;
@@ -97,6 +128,12 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
       autoSize: true,
     } as const;
 
+    const priceFormat: PriceFormat = {
+      type: "custom",
+      minMove: 0.0001,
+      formatter: (p: number) => formatPrice(String(p)),
+    };
+
     const price = createChart(priceRef.current, baseOptions);
     const candleSeries = price.addCandlestickSeries({
       upColor: COLORS.up,
@@ -105,8 +142,7 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
       wickUpColor: COLORS.up,
       wickDownColor: COLORS.down,
     });
-    const sma20 = price.addLineSeries({ color: COLORS.sma20, lineWidth: 1, title: "SMA20" });
-    const sma50 = price.addLineSeries({ color: COLORS.sma50, lineWidth: 1, title: "SMA50" });
+    candleSeries.applyOptions({ priceFormat });
 
     const candleData: CandlestickData<Time>[] = data.candles.map((c) => ({
       time: (Date.parse(c.opened_at) / 1000) as Time,
@@ -117,39 +153,67 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
     }));
     candleSeries.setData(candleData);
 
-    sma20.setData(toLineData(data.candles, data.sma_20));
-    sma50.setData(toLineData(data.candles, data.sma_50));
+    if (vis.sma20) {
+      const sma20 = price.addLineSeries({ color: COLORS.sma20, lineWidth: 1, title: "SMA20" });
+      sma20.applyOptions({ priceFormat });
+      sma20.setData(toLineData(data.candles, data.sma_20));
+    }
+    if (vis.sma50) {
+      const sma50 = price.addLineSeries({ color: COLORS.sma50, lineWidth: 1, title: "SMA50" });
+      sma50.applyOptions({ priceFormat });
+      sma50.setData(toLineData(data.candles, data.sma_50));
+    }
 
-    const rsi = createChart(rsiRef.current, baseOptions);
-    const rsiSeries = rsi.addLineSeries({ color: COLORS.sma20, lineWidth: 1, title: "RSI(14)" });
-    rsiSeries.setData(toLineData(data.candles, data.rsi_14));
-    rsiSeries.createPriceLine({
-      price: 70,
-      color: "#ef4444",
-      lineWidth: 1,
-      lineStyle: 2,
-      axisLabelVisible: true,
-      title: "70",
-    });
-    rsiSeries.createPriceLine({
-      price: 30,
-      color: "#22c55e",
-      lineWidth: 1,
-      lineStyle: 2,
-      axisLabelVisible: true,
-      title: "30",
-    });
+    chartsRef.current.price = price;
+    const synced: IChartApi[] = [price];
 
-    const macd = createChart(macdRef.current, baseOptions);
-    const macdLine = macd.addLineSeries({ color: COLORS.macd, lineWidth: 1, title: "MACD" });
-    const signalLine = macd.addLineSeries({ color: COLORS.signal, lineWidth: 1, title: "Signal" });
-    const histogram = macd.addHistogramSeries({
-      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-    });
+    if (vis.rsi && rsiRef.current) {
+      const rsi = createChart(rsiRef.current, baseOptions);
+      const rsiSeries = rsi.addLineSeries({ color: COLORS.sma20, lineWidth: 1, title: "RSI(14)" });
+      rsiSeries.setData(toLineData(data.candles, data.rsi_14));
+      rsiSeries.createPriceLine({
+        price: 70,
+        color: "#ef4444",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "70",
+      });
+      rsiSeries.createPriceLine({
+        price: 30,
+        color: "#22c55e",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "30",
+      });
+      chartsRef.current.rsi = rsi;
+      synced.push(rsi);
+    }
 
-    macdLine.setData(toLineData(data.candles, data.macd));
-    signalLine.setData(toLineData(data.candles, data.macd_signal));
-    histogram.setData(toHistogramData(data.candles, data.macd_histogram));
+    if (vis.macd && macdRef.current) {
+      const macd = createChart(macdRef.current, baseOptions);
+      const macdLine = macd.addLineSeries({ color: COLORS.macd, lineWidth: 1, title: "MACD" });
+      const signalLine = macd.addLineSeries({ color: COLORS.signal, lineWidth: 1, title: "Signal" });
+      const histogram = macd.addHistogramSeries({
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+      });
+      macdLine.setData(toLineData(data.candles, data.macd));
+      signalLine.setData(toLineData(data.candles, data.macd_signal));
+      histogram.setData(toHistogramData(data.candles, data.macd_histogram));
+      chartsRef.current.macd = macd;
+      synced.push(macd);
+    }
+
+    if (volumeRef.current) {
+      const volume = createChart(volumeRef.current, baseOptions);
+      const volSeries = volume.addHistogramSeries({
+        priceFormat: { type: "volume" },
+      });
+      volSeries.setData(toVolumeData(data.candles));
+      chartsRef.current.volume = volume;
+      synced.push(volume);
+    }
 
     const syncScale = (source: IChartApi, others: IChartApi[]) => {
       source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -157,11 +221,9 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
         others.forEach((o) => o.timeScale().setVisibleLogicalRange(range));
       });
     };
-    syncScale(price, [rsi, macd]);
-    syncScale(rsi, [price, macd]);
-    syncScale(macd, [price, rsi]);
-
-    chartsRef.current = { price, rsi, macd };
+    for (const ch of synced) {
+      syncScale(ch, synced.filter((o) => o !== ch));
+    }
   }
 
   if (!symbol) {
@@ -189,14 +251,72 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
         <span className="text-[10px] text-slate-500 ml-2">{preset.interval} 봉</span>
         {loading && <span className="text-slate-500 ml-2">로딩...</span>}
       </div>
+      <div className="flex flex-wrap gap-3 text-xs items-center text-slate-300">
+        <IndicatorToggle
+          label="SMA20"
+          checked={show.sma20}
+          onChange={(v) => setShow((s) => ({ ...s, sma20: v }))}
+        />
+        <IndicatorToggle
+          label="SMA50"
+          checked={show.sma50}
+          onChange={(v) => setShow((s) => ({ ...s, sma50: v }))}
+        />
+        <IndicatorToggle
+          label="RSI"
+          checked={show.rsi}
+          onChange={(v) => setShow((s) => ({ ...s, rsi: v }))}
+        />
+        <IndicatorToggle
+          label="MACD"
+          checked={show.macd}
+          onChange={(v) => setShow((s) => ({ ...s, macd: v }))}
+        />
+      </div>
       {error && <div className="text-rose-400 text-xs">{error}</div>}
-      <div className="text-[10px] text-slate-500">가격 · SMA20(노랑) · SMA50(보라)</div>
+      <div className="text-[10px] text-slate-500">
+        가격
+        {show.sma20 && " · SMA20(노랑)"}
+        {show.sma50 && " · SMA50(보라)"}
+      </div>
       <div ref={priceRef} className="h-72 bg-slate-950 rounded border border-slate-800" />
-      <div className="text-[10px] text-slate-500">RSI(14) · 30/70 기준선</div>
-      <div ref={rsiRef} className="h-24 bg-slate-950 rounded border border-slate-800" />
-      <div className="text-[10px] text-slate-500">MACD(12,26,9) · 시그널/히스토그램</div>
-      <div ref={macdRef} className="h-24 bg-slate-950 rounded border border-slate-800" />
+      {show.rsi && (
+        <>
+          <div className="text-[10px] text-slate-500">RSI(14) · 30/70 기준선</div>
+          <div ref={rsiRef} className="h-24 bg-slate-950 rounded border border-slate-800" />
+        </>
+      )}
+      {show.macd && (
+        <>
+          <div className="text-[10px] text-slate-500">MACD(12,26,9) · 시그널/히스토그램</div>
+          <div ref={macdRef} className="h-24 bg-slate-950 rounded border border-slate-800" />
+        </>
+      )}
+      <div className="text-[10px] text-slate-500">거래량</div>
+      <div ref={volumeRef} className="h-16 bg-slate-950 rounded border border-slate-800" />
     </div>
+  );
+}
+
+function IndicatorToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange(v: boolean): void;
+}) {
+  return (
+    <label className="inline-flex items-center gap-1 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="accent-emerald-500"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 
@@ -229,6 +349,23 @@ function toHistogramData(
       time: (Date.parse(candles[i].opened_at) / 1000) as Time,
       value: n,
       color: n >= 0 ? COLORS.up : COLORS.down,
+    });
+  }
+  return out;
+}
+
+function toVolumeData(
+  candles: { opened_at: string; open: string; close: string; volume: string }[],
+): HistogramData<Time>[] {
+  const out: HistogramData<Time>[] = [];
+  for (const c of candles) {
+    const v = Number(c.volume);
+    if (!Number.isFinite(v)) continue;
+    const up = Number(c.close) >= Number(c.open);
+    out.push({
+      time: (Date.parse(c.opened_at) / 1000) as Time,
+      value: v,
+      color: up ? COLORS.up : COLORS.down,
     });
   }
   return out;
