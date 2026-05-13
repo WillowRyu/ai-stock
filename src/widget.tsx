@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import "./lib/state/themeStore";
 import { onQuoteUpdate, ipc } from "./lib/ipc";
 import { useQuotesStore } from "./lib/state/quotesStore";
 import { useSettingsStore } from "./lib/state/settingsStore";

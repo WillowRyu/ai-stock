@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import { useSettingsStore } from "../lib/state/settingsStore";
+import { useThemeStore, type ThemeMode } from "../lib/state/themeStore";
 import { aiIpc, kisIpc, type AiProviderKind, type AppSettingsDto } from "../lib/ipc";
+
+const THEMES: { value: ThemeMode; label: string }[] = [
+  { value: "light", label: "라이트" },
+  { value: "dark", label: "다크" },
+  { value: "system", label: "시스템" },
+];
 
 export function Settings({ onClose }: { onClose(): void }) {
   const { load, save } = useSettingsStore();
+  const themeMode = useThemeStore((s) => s.mode);
+  const setThemeMode = useThemeStore((s) => s.setMode);
   const [draft, setDraft] = useState<AppSettingsDto | null>(null);
   const [keyDraft, setKeyDraft] = useState<{ provider: AiProviderKind; key: string }>({ provider: "openai", key: "" });
   const [kisHas, setKisHas] = useState(false);
@@ -57,6 +66,26 @@ export function Settings({ onClose }: { onClose(): void }) {
                  onChange={(e) => setDraft({ ...draft, widget_opacity: Number(e.target.value) })}
                  className="mt-1 w-full" />
         </label>
+        <div className="border-t border-slate-800 pt-3">
+          <div className="text-xs uppercase text-slate-400 mb-2">테마</div>
+          <div className="flex gap-2 text-sm">
+            {THEMES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setThemeMode(t.value)}
+                className={
+                  "px-3 py-2 rounded border " +
+                  (themeMode === t.value
+                    ? "bg-emerald-600 border-emerald-500 text-white"
+                    : "bg-slate-800 border-slate-700 hover:bg-slate-700")
+                }
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="border-t border-slate-800 pt-3">
           <div className="text-xs uppercase text-slate-400 mb-2">AI API 키 (BYOK)</div>
           <div className="flex gap-2">
