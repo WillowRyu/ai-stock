@@ -156,10 +156,14 @@ impl AssetProvider for NaverKrProvider {
         if resp.status >= 400 {
             return Err(ProviderError::Upstream(format!("naver fchart {}", resp.status)));
         }
-        let xml = std::str::from_utf8(&resp.body)
+        // Naver's fchart response is declared `encoding="EUC-KR"` and the
+        // `name` attribute on chartdata contains EUC-KR bytes (the rest of
+        // the document is ASCII). Lossy UTF-8 conversion replaces those
+        // bytes with U+FFFD — fine for us since we only read the ASCII
+        // `<item data="..."/>` payloads.
+        let xml = String::from_utf8_lossy(&resp.body);
+        let doc = roxmltree::Document::parse(&xml)
             .map_err(|e| ProviderError::Parse(e.to_string()))?;
-        let doc =
-            roxmltree::Document::parse(xml).map_err(|e| ProviderError::Parse(e.to_string()))?;
 
         let krw = Currency::new("KRW").unwrap();
         let to_money = |s: &str| -> Result<Price, ProviderError> {
