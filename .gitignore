@@ -4,3 +4,4 @@ app/gen/
 node_modules/
 dist/
 tsconfig.tsbuildinfo
+proptest-regressions/
