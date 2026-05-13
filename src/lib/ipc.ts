@@ -67,12 +67,14 @@ export function onQuoteUpdate(cb: (quotes: QuoteDto[]) => void): Promise<Unliste
   return listen<QuoteDto[]>("quote-update", (e) => cb(e.payload));
 }
 
+export type AlertConditionKind = "above" | "below" | "rsi_above" | "rsi_below" | "macd_golden" | "macd_death";
+
 export interface AlertRuleDto {
   id: number;
   symbol: SymbolDto;
-  condition: "above" | "below";
-  threshold_amount: string;
-  threshold_currency: string;
+  condition: AlertConditionKind;
+  threshold_amount: string | null;       // null for macd_*
+  threshold_currency: string | null;     // null for rsi_*, macd_*
   enabled: boolean;
   cooldown_secs: number;
 }
