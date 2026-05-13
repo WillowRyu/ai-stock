@@ -29,7 +29,13 @@ function SymbolDetail({ symbol }: { symbol: SymbolDto }) {
   return (
     <main className="flex-1 p-4 overflow-y-auto">
       <div className="text-xs uppercase text-slate-500">{symbol.kind}</div>
-      <h2 className="text-2xl font-semibold">{symbol.ticker}{symbol.quote_currency ? `/${symbol.quote_currency}` : ""}</h2>
+      <h2 className="text-2xl font-semibold">
+        {q?.display_name ?? symbol.ticker}
+        {symbol.quote_currency ? <span className="text-slate-400 ml-2 text-base">/{symbol.quote_currency}</span> : null}
+      </h2>
+      {q?.display_name && (
+        <div className="text-xs text-slate-500">{symbol.ticker}</div>
+      )}
       <div className="mt-2 flex items-baseline gap-3">
         <div className="text-4xl tabular-nums">{q ? formatPrice(q.price) : "—"}</div>
         <div className="text-slate-400">{q?.currency ?? ""}</div>

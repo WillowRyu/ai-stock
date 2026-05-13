@@ -15,6 +15,7 @@ export interface QuoteDto {
   currency: string;
   change_24h: string | null;
   observed_at: string; // RFC3339
+  display_name: string | null;
 }
 
 export interface HoldingDto {

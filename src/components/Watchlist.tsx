@@ -53,8 +53,10 @@ export function Watchlist({ selected, onSelect, onAdd }: Props) {
                 onClick={() => onSelect(s)}
                 className={clsx("px-3 py-2 cursor-pointer flex justify-between items-center", isSelected && "bg-slate-800")}>
               <div>
-                <div className="text-sm">{s.ticker}</div>
-                <div className="text-[10px] text-slate-500 uppercase">{s.kind}</div>
+                <div className="text-sm">{q?.display_name ?? s.ticker}</div>
+                <div className="text-[10px] text-slate-500 uppercase">
+                  {q?.display_name ? `${s.ticker} · ${s.kind}` : s.kind}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {q && isStale(q.observed_at) && (
