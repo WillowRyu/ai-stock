@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Window root: transparent so OS vibrancy / Mica shows through. */
+html, body { background: transparent; height: 100%; }
+
+/* Default text color per mode. */
+html { color: #1e293b; } /* slate-800 — light mode default */
+html.dark { color: #e2e8f0; } /* slate-200 — dark mode default */
+
+/* Glass surface — used by panels, dialogs, and the widget shell.
+   Inner content sits on top of this; the host window provides the blur. */
+@layer components {
+  .glass-panel {
+    @apply bg-white/60 backdrop-blur-md border border-slate-300/40 shadow-lg;
+  }
+  .dark .glass-panel {
+    @apply bg-slate-900/60 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+
+  /* Subtle inset surface — used for inputs, tags, secondary panels. */
+  .glass-inset {
+    @apply bg-white/40 backdrop-blur-sm border border-slate-300/30;
+  }
+  .dark .glass-inset {
+    @apply bg-slate-900/40 backdrop-blur-sm border border-white/5;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2 text-sm transition-colors;
+  }
+  .btn-secondary {
+    @apply bg-slate-200 hover:bg-slate-300 text-slate-800 rounded px-3 py-2 text-sm transition-colors;
+  }
+  .dark .btn-secondary {
+    @apply bg-slate-800 hover:bg-slate-700 text-slate-100;
+  }
+}
+
+/* Tabular numbers for prices */
+.tabular-nums { font-variant-numeric: tabular-nums; }
