@@ -59,6 +59,7 @@ dependencies = [
  "application",
  "domain",
  "infrastructure",
+ "rust_decimal",
  "serde",
  "serde_json",
  "tauri",

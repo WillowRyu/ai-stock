@@ -15,6 +15,8 @@ pub struct AppState {
     pub market: Arc<MarketService>,
     pub portfolio: Arc<PortfolioService>,
     pub settings: Arc<SettingsService>,
+    // Held for future IPC commands (e.g. API-key management); not yet read.
+    #[allow(dead_code)]
     pub secrets: Arc<KeyringSecretStore>,
 }
 
