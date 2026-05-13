@@ -46,6 +46,26 @@ async fn main() {
                 let state = handle.state::<wiring::AppState>();
                 let market = state.market.clone();
                 let alerts = state.alerts.clone();
+
+                // Background FX rate refresh. Fetches one daily candle for a handful
+                // of FX pairs via the existing market provider chain (Yahoo handles
+                // `=X` tickers under the `Forex` kind) and writes them into the
+                // FxRateBook so portfolio valuation can aggregate across currencies.
+                let fx_market = state.market.clone();
+                let fx_book = state.fx.clone();
+                let fx_emit = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    refresh_fx_rates(&fx_market, &fx_book, &fx_emit).await;
+                    let mut ticker =
+                        tokio::time::interval(std::time::Duration::from_secs(300));
+                    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                    // First tick fires immediately; we already did a pass, so skip it.
+                    ticker.tick().await;
+                    loop {
+                        ticker.tick().await;
+                        refresh_fx_rates(&fx_market, &fx_book, &fx_emit).await;
+                    }
+                });
                 let initial_interval = state
                     .settings
                     .get()
@@ -93,4 +113,50 @@ async fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Pull one daily candle per FX pair and write the latest close into the rate
+/// book. `USDKRW=X` means "KRW per 1 USD", so the close goes into `(USD, KRW)`
+/// directly; we also store the inverse so portfolio aggregation works in both
+/// directions.
+async fn refresh_fx_rates(
+    market: &std::sync::Arc<application::market_service::MarketService>,
+    fx: &application::fx_rate_book::FxRateBook,
+    app: &tauri::AppHandle,
+) {
+    let pairs = [
+        ("USDKRW=X", "USD", "KRW"),
+        ("EURUSD=X", "EUR", "USD"),
+        ("JPYUSD=X", "JPY", "USD"),
+    ];
+    let now = chrono::Utc::now();
+    let from = now - chrono::Duration::days(3);
+    for (yticker, from_code, to_code) in pairs {
+        let Ok(from_c) = domain::money::Currency::new(from_code) else { continue };
+        let Ok(to_c) = domain::money::Currency::new(to_code) else { continue };
+        let symbol = match domain::symbol::Symbol::new(
+            domain::asset::AssetKind::Forex,
+            yticker,
+            None,
+        ) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        match market
+            .fetch_candles(&symbol, from, now, domain::candle::CandleInterval::OneDay)
+            .await
+        {
+            Ok(candles) if !candles.is_empty() => {
+                let last = &candles[candles.len() - 1];
+                let rate = last.close.money().amount();
+                fx.set(from_c, to_c, rate).await;
+                if rate > rust_decimal::Decimal::ZERO {
+                    fx.set(to_c, from_c, rust_decimal::Decimal::ONE / rate).await;
+                }
+            }
+            _ => {
+                let _ = app.emit("fx-refresh-failed", format!("{yticker}: no candles"));
+            }
+        }
+    }
 }

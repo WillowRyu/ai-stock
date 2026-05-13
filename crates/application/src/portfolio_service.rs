@@ -1,8 +1,7 @@
+use crate::fx_rate_book::FxRateBook;
 use crate::market_service::MarketService;
-use crate::ports::repos::{PortfolioRepo, RepoError};
-use domain::{
-    fx::FxRates, holding::Holding, money::Currency, portfolio_calc, symbol::Symbol,
-};
+use crate::ports::repos::{PortfolioRepo, RepoError, SettingsRepo};
+use domain::{holding::Holding, money::Currency, portfolio_calc, symbol::Symbol};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -10,16 +9,25 @@ use thiserror::Error;
 pub enum PortfolioError {
     #[error("repo: {0}")]
     Repo(#[from] RepoError),
+    #[error("invalid display currency: {0}")]
+    InvalidCurrency(String),
 }
 
 pub struct PortfolioService {
     repo: Arc<dyn PortfolioRepo>,
     market: Arc<MarketService>,
+    settings_repo: Arc<dyn SettingsRepo>,
+    fx: FxRateBook,
 }
 
 impl PortfolioService {
-    pub fn new(repo: Arc<dyn PortfolioRepo>, market: Arc<MarketService>) -> Self {
-        Self { repo, market }
+    pub fn new(
+        repo: Arc<dyn PortfolioRepo>,
+        market: Arc<MarketService>,
+        settings_repo: Arc<dyn SettingsRepo>,
+        fx: FxRateBook,
+    ) -> Self {
+        Self { repo, market, settings_repo, fx }
     }
 
     pub async fn upsert_holding(&self, holding: Holding) -> Result<(), PortfolioError> {
@@ -35,10 +43,10 @@ impl PortfolioService {
     pub async fn valuation(&self) -> Result<portfolio_calc::PortfolioValuation, PortfolioError> {
         let portfolio = self.repo.load().await?;
         let quotes = self.market.snapshot().await;
-        // Commit 1 caller-side adapter: aggregate in USD with an empty rate book.
-        // Commit 2 will thread display currency + a live FxRateBook through here.
-        let fx = FxRates::new();
-        let display = Currency::new("USD").unwrap();
+        let settings = self.settings_repo.load().await?;
+        let display = Currency::new(&settings.display_currency)
+            .map_err(|_| PortfolioError::InvalidCurrency(settings.display_currency.clone()))?;
+        let fx = self.fx.snapshot().await;
         Ok(portfolio_calc::evaluate(&portfolio, &quotes, &fx, display))
     }
 }
@@ -48,7 +56,7 @@ mod tests {
     use super::*;
     use crate::market_service::MarketService;
     use crate::ports::asset_provider::MockAssetProvider;
-    use crate::ports::repos::{MockPortfolioRepo, MockWatchlistRepo};
+    use crate::ports::repos::{AppSettings, MockPortfolioRepo, MockSettingsRepo, MockWatchlistRepo};
     use chrono::Utc;
     use domain::{
         asset::AssetKind, money::{Currency, Money}, portfolio::Portfolio, price::Price,
@@ -84,7 +92,11 @@ mod tests {
         let pf_clone = pf.clone();
         pf_repo.expect_load().returning(move || Ok(pf_clone.clone()));
 
-        let svc = PortfolioService::new(Arc::new(pf_repo), market);
+        let mut settings_repo = MockSettingsRepo::new();
+        settings_repo.expect_load().returning(|| Ok(AppSettings::default()));
+
+        let fx = FxRateBook::default();
+        let svc = PortfolioService::new(Arc::new(pf_repo), market, Arc::new(settings_repo), fx);
         let v = svc.valuation().await.unwrap();
         assert_eq!(v.total_value, Some(usd(dec!(1800))));
         assert_eq!(v.total_pnl, Some(usd(dec!(300))));

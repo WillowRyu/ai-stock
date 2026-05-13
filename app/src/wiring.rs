@@ -1,6 +1,7 @@
 use application::{
     ai_service::AiService,
     alert_service::AlertService,
+    fx_rate_book::FxRateBook,
     market_service::MarketService, portfolio_service::PortfolioService,
     settings_service::SettingsService,
     ports::{ai_provider::AiProvider, asset_provider::AssetProvider, http_client::HttpClient, news_provider::NewsProvider},
@@ -23,6 +24,7 @@ pub struct AppState {
     pub alerts: Arc<AlertService>,
     pub secrets: Arc<KeyringSecretStore>,
     pub ai: Arc<AiService>,
+    pub fx: FxRateBook,
 }
 
 pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Option<String>) -> AppState {
@@ -59,7 +61,13 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
 
     let market = Arc::new(MarketService::new(watchlist_repo, providers));
     let alerts = Arc::new(AlertService::new(alert_repo, notifier, clock_arc.clone(), market.clone()));
-    let portfolio = Arc::new(PortfolioService::new(portfolio_repo, market.clone()));
+    let fx = FxRateBook::new();
+    let portfolio = Arc::new(PortfolioService::new(
+        portfolio_repo,
+        market.clone(),
+        settings_repo.clone(),
+        fx.clone(),
+    ));
     let settings = Arc::new(SettingsService::new(settings_repo.clone()));
     let secrets = Arc::new(KeyringSecretStore::new("dev.willowryu.aistock"));
 
@@ -87,5 +95,5 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
     let secrets_dyn: Arc<dyn application::ports::secret_store::SecretStore> = secrets.clone();
     let ai = Arc::new(AiService::new(secrets_dyn, market.clone(), news, provider_factory));
 
-    AppState { market, portfolio, settings, alerts, secrets, ai }
+    AppState { market, portfolio, settings, alerts, secrets, ai, fx }
 }
