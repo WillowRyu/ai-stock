@@ -1,7 +1,32 @@
-.superpowers/
+# Build outputs
 target/
 app/gen/
 node_modules/
 dist/
 tsconfig.tsbuildinfo
 proptest-regressions/
+coverage/
+
+# Brainstorming / scratch
+.superpowers/
+
+# Secrets — defense in depth; we don't expect any of these files in the repo
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log
