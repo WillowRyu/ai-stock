@@ -104,6 +104,7 @@ async fn main() {
                                 currency: q.price.money().currency().as_str().to_string(),
                                 change_24h: q.change_24h.map(|d| d.to_string()),
                                 observed_at: q.observed_at.to_rfc3339(),
+                                display_name: q.display_name.clone(),
                             }).collect();
                             let _ = handle.emit("quote-update", dto);
                         }

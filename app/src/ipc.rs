@@ -22,6 +22,7 @@ pub struct QuoteDto {
     pub currency: String,
     pub change_24h: Option<String>,
     pub observed_at: String,
+    pub display_name: Option<String>,
 }
 
 fn kind_to_str(k: AssetKind) -> &'static str {
@@ -71,6 +72,7 @@ pub async fn quotes_snapshot(state: State<'_, AppState>) -> Result<Vec<QuoteDto>
         currency: q.price.money().currency().as_str().to_string(),
         change_24h: q.change_24h.map(|d| d.to_string()),
         observed_at: q.observed_at.to_rfc3339(),
+        display_name: q.display_name.clone(),
     }).collect())
 }
 

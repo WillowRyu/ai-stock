@@ -8,10 +8,18 @@ pub struct Quote {
     pub change_24h: Option<rust_decimal::Decimal>, // ratio, e.g. 0.0124 = +1.24%
     pub volume_24h: Option<rust_decimal::Decimal>,
     pub observed_at: DateTime<Utc>,
+    pub display_name: Option<String>,
 }
 
 impl Quote {
     pub fn new(symbol: Symbol, price: Price, observed_at: DateTime<Utc>) -> Self {
-        Self { symbol, price, change_24h: None, volume_24h: None, observed_at }
+        Self {
+            symbol,
+            price,
+            change_24h: None,
+            volume_24h: None,
+            observed_at,
+            display_name: None,
+        }
     }
 }
