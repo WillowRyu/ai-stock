@@ -1,53 +1,12 @@
+# License + advisory checks via cargo-deny.
+# DDD layer-boundary enforcement is done by scripts/check-layer-boundary.sh
+# (cargo-deny's `wrappers` semantics are opposite to what we need; the plan
+# was based on outdated assumptions).
+
 [bans]
 multiple-versions = "warn"
-wildcards = "deny"
-
-# Domain must remain pure — no IO crates allowed.
-[[bans.deny]]
-name = "tokio"
-[[bans.deny.wrappers]]
-crate = "domain"
-
-[[bans.deny]]
-name = "reqwest"
-[[bans.deny.wrappers]]
-crate = "domain"
-
-[[bans.deny]]
-name = "sqlx"
-[[bans.deny.wrappers]]
-crate = "domain"
-
-[[bans.deny]]
-name = "tauri"
-[[bans.deny.wrappers]]
-crate = "domain"
-
-[[bans.deny]]
-name = "keyring"
-[[bans.deny.wrappers]]
-crate = "domain"
-
-# Application must not import infrastructure crates directly.
-[[bans.deny]]
-name = "reqwest"
-[[bans.deny.wrappers]]
-crate = "application"
-
-[[bans.deny]]
-name = "sqlx"
-[[bans.deny.wrappers]]
-crate = "application"
-
-[[bans.deny]]
-name = "keyring"
-[[bans.deny.wrappers]]
-crate = "application"
-
-[[bans.deny]]
-name = "tauri"
-[[bans.deny.wrappers]]
-crate = "application"
+wildcards = "allow"          # path dependencies in this workspace are wildcards
+allow-wildcard-paths = true
 
 [licenses]
 allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "Unicode-DFS-2016", "CC0-1.0", "MPL-2.0", "Zlib"]

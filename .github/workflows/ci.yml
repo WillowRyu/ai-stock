@@ -35,7 +35,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo install cargo-deny --locked
-      - run: cargo deny check bans
+      - run: cargo deny check licenses advisories bans
+
+  layer-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/check-layer-boundary.sh
 
   frontend:
     runs-on: ubuntu-latest
