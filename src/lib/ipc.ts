@@ -82,3 +82,23 @@ export const alertsIpc = {
   create: (rule: AlertRuleDto) => invoke<number>("alerts_create", { rule }),
   delete: (id: number) => invoke<void>("alerts_delete", { id }),
 };
+
+export type AiProviderKind = "openai" | "anthropic" | "gemini";
+
+export const aiIpc = {
+  setKey: (provider: AiProviderKind, key: string) => invoke<void>("ai_set_key", { provider, key }),
+  clearKey: (provider: AiProviderKind) => invoke<void>("ai_clear_key", { provider }),
+  hasKey: (provider: AiProviderKind) => invoke<boolean>("ai_has_key", { provider }),
+  commentary: (provider: AiProviderKind, symbol: SymbolDto) =>
+    invoke<void>("ai_commentary", { provider, symbol }),
+};
+
+export function onAiChunk(cb: (text: string) => void): Promise<UnlistenFn> {
+  return listen<string>("ai-chunk", (e) => cb(e.payload));
+}
+export function onAiDone(cb: () => void): Promise<UnlistenFn> {
+  return listen<null>("ai-done", () => cb());
+}
+export function onAiError(cb: (msg: string) => void): Promise<UnlistenFn> {
+  return listen<string>("ai-error", (e) => cb(e.payload));
+}
