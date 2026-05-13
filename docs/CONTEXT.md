@@ -1,6 +1,6 @@
 # ai-stock — Context & Ubiquitous Language
 
-> Last updated: 2026-05-13 (Task 0.3)
+> Last updated: 2026-05-13 (M1 complete)
 
 ## Bounded Contexts
 
@@ -25,4 +25,7 @@
 
 ## Current State
 
-- M1 in progress — scaffolding complete (Task 0.1, 0.2).
+- **M1 complete.** Working cross-platform Tauri app with hybrid main window + always-on-top floating widget, Crypto (Binance + CoinGecko) + US/Forex/Commodity (Yahoo + optional Finnhub) coverage, watchlist + portfolio P&L + adjustable widget transparency. ~45 backend unit tests + 1 frontend store test + E2E smoke.
+- **M2 next** — KR stocks (Naver / KIS), technical indicators (MA, RSI, MACD, Bollinger), price-threshold alerts + desktop notifications, forex/commodities polish.
+- **M3 after** — BYOK AI (OpenAI/Anthropic/Gemini), news providers, commentary/analysis prompts.
+- **Known M1 limitations:** Currency widened to 3-5 char ASCII to support stablecoins (USDT/USDC). Tauri CSP loose (default-src 'self' + https connect-src) — tighten in M2. cargo-deny limited to `bans` check (license/advisory subset blocked by transitive gtk-rs/MPL deps — revisit when tauri upstream migrates off gtk3).

@@ -9,9 +9,9 @@
 
 - [x] Task 0.1: Rust workspace + Tauri shell.
 - [x] Task 0.2: Vite + React + Tailwind frontend.
-- [ ] Task 0.3: Docs skeleton + ADR 0001.
-- [ ] Task 0.4: CI pipeline.
-- [ ] Task 0.5: cargo-deny layer enforcement.
+- [x] Task 0.3: Docs skeleton + ADR 0001.
+- [x] Task 0.4: CI pipeline.
+- [x] Task 0.5: cargo-deny layer enforcement.
 
 ### Phase 1 — Domain layer
 
@@ -56,3 +56,16 @@
 - [x] Task 5.3: Watchlist + DetailPane + AddSymbol.
 - [x] Task 5.4: PortfolioPanel + Settings + i18n stubs.
 - [x] Task 5.5: Floating widget with transparency.
+
+### Phase 6 — E2E + close-out
+
+- [x] Task 6.1: tauri-driver E2E smoke.
+- [x] Task 6.2: M1 close-out — ADR 0002, CONTEXT update.
+
+## 2026-05-13 — M1 complete
+
+- Working app: cross-platform Tauri shell, hybrid main + floating widget, 4 asset adapters (Binance, CoinGecko, Yahoo, Finnhub), portfolio P&L.
+- Tests: ~45 backend unit tests (domain pure + application with mocks + infra via wiremock/sqlite temp), 1 frontend Zustand store test, 1 E2E golden-path smoke.
+- DDD layer boundary enforced via scripts/check-layer-boundary.sh (cargo-deny `wrappers` semantics didn't match the plan; pivoted in commit 47b3058).
+- Currency value object widened to 3-5 char ASCII to support USDT/USDC.
+- Next: draft M2 plan (KR stocks via Naver, technical indicators, alerts + notifications, forex/commodities polish).
