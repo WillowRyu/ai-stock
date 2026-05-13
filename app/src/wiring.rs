@@ -1,13 +1,15 @@
 use application::{
+    ai_service::AiService,
     alert_service::AlertService,
     market_service::MarketService, portfolio_service::PortfolioService,
     settings_service::SettingsService,
-    ports::{asset_provider::AssetProvider, http_client::HttpClient, repos::SettingsRepo},
+    ports::{ai_provider::AiProvider, asset_provider::AssetProvider, http_client::HttpClient, news_provider::NewsProvider, repos::SettingsRepo},
     poll_scheduler::PollScheduler,
 };
 use infrastructure::{
     clock::SystemClock, http::ReqwestHttpClient, keyring_secrets::KeyringSecretStore,
-    providers::{binance::BinanceProvider, coingecko::CoinGeckoProvider, finnhub::FinnhubProvider, naver_kr::NaverKrProvider, yahoo::YahooProvider},
+    news::{coindesk_rss::CoinDeskRss, yahoo_rss::YahooNewsRss},
+    providers::{anthropic::AnthropicProvider, binance::BinanceProvider, coingecko::CoinGeckoProvider, finnhub::FinnhubProvider, gemini::GeminiProvider, naver_kr::NaverKrProvider, openai::OpenAiProvider, yahoo::YahooProvider},
     sqlite::{open, alert_repo::SqliteAlertRepo, watchlist_repo::SqliteWatchlistRepo, portfolio_repo::SqlitePortfolioRepo, settings_repo::SqliteSettingsRepo},
 };
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
@@ -20,9 +22,8 @@ pub struct AppState {
     pub portfolio: Arc<PortfolioService>,
     pub settings: Arc<SettingsService>,
     pub alerts: Arc<AlertService>,
-    // Held for future IPC commands (e.g. API-key management); not yet read.
-    #[allow(dead_code)]
     pub secrets: Arc<KeyringSecretStore>,
+    pub ai: Arc<AiService>,
 }
 
 pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Option<String>) -> AppState {
@@ -68,5 +69,23 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
     let (scheduler, _rx) = PollScheduler::new(market.clone(), clock_arc.clone());
     scheduler.start(std::time::Duration::from_secs(initial_interval as u64));
 
-    AppState { market, portfolio, settings, alerts, secrets }
+    let news: Vec<Arc<dyn NewsProvider>> = vec![
+        Arc::new(YahooNewsRss::new(http.clone())),
+        Arc::new(CoinDeskRss::new(http.clone())),
+    ];
+
+    let provider_factory: application::ai_service::ProviderFactory =
+        Arc::new(|kind: &str, key: &str| -> Option<Arc<dyn AiProvider>> {
+            match kind {
+                "openai" => Some(Arc::new(OpenAiProvider::new(key.into(), "gpt-4o-mini".into()))),
+                "anthropic" => Some(Arc::new(AnthropicProvider::new(key.into(), "claude-haiku-4-5-20251001".into()))),
+                "gemini" => Some(Arc::new(GeminiProvider::new(key.into(), "gemini-2.0-flash".into()))),
+                _ => None,
+            }
+        });
+
+    let secrets_dyn: Arc<dyn application::ports::secret_store::SecretStore> = secrets.clone();
+    let ai = Arc::new(AiService::new(secrets_dyn, market.clone(), news, provider_factory));
+
+    AppState { market, portfolio, settings, alerts, secrets, ai }
 }

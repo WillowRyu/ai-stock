@@ -1,14 +1,16 @@
 use crate::wiring::AppState;
 use application::indicator_service::compute_snapshot;
 use application::ports::repos::AppSettings;
+use application::ports::secret_store::{SecretError, SecretStore};
 use domain::{
     alert::{AlertCondition, AlertRule},
     asset::AssetKind, holding::Holding, money::{Currency, Money}, quantity::Quantity, symbol::Symbol,
 };
+use futures::StreamExt;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use tauri::State;
+use tauri::{Emitter, State};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SymbolDto { pub kind: String, pub ticker: String, pub quote_currency: Option<String> }
@@ -255,4 +257,53 @@ pub async fn alerts_create(state: State<'_, AppState>, rule: AlertRuleDto) -> Re
 #[tauri::command]
 pub async fn alerts_delete(state: State<'_, AppState>, id: i64) -> Result<(), String> {
     state.alerts.delete(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn ai_set_key(state: State<'_, AppState>, provider: String, key: String) -> Result<(), String> {
+    let name = format!("{}_api_key", provider);
+    state.secrets.set(&name, &key).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn ai_clear_key(state: State<'_, AppState>, provider: String) -> Result<(), String> {
+    let name = format!("{}_api_key", provider);
+    state.secrets.delete(&name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn ai_has_key(state: State<'_, AppState>, provider: String) -> Result<bool, String> {
+    let name = format!("{}_api_key", provider);
+    match state.secrets.get(&name).await {
+        Ok(_) => Ok(true),
+        Err(SecretError::NotFound(_)) => Ok(false),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn ai_commentary(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    provider: String,
+    symbol: SymbolDto,
+) -> Result<(), String> {
+    let s = dto_to_symbol(&symbol)?;
+    let mut stream = state.ai.commentary(&provider, &s).await.map_err(|e| e.to_string())?;
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(application::ports::ai_provider::AiChunk::Text(t)) => {
+                let _ = app.emit("ai-chunk", t);
+            }
+            Ok(application::ports::ai_provider::AiChunk::Done) => {
+                let _ = app.emit("ai-done", ());
+                break;
+            }
+            Err(e) => {
+                let _ = app.emit("ai-error", e.to_string());
+                break;
+            }
+        }
+    }
+    Ok(())
 }

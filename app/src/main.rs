@@ -24,6 +24,7 @@ async fn main() {
             ipc::widget_toggle,
             ipc::indicators_for,
             ipc::alerts_list, ipc::alerts_create, ipc::alerts_delete,
+            ipc::ai_set_key, ipc::ai_clear_key, ipc::ai_has_key, ipc::ai_commentary,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
