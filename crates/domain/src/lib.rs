@@ -9,6 +9,7 @@ pub mod percent;
 pub mod portfolio;
 pub mod portfolio_calc;
 pub mod price;
+pub mod prompt;
 pub mod quantity;
 pub mod quote;
 pub mod sanity;
