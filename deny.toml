@@ -9,8 +9,9 @@ wildcards = "allow"          # path dependencies in this workspace are wildcards
 allow-wildcard-paths = true
 
 [licenses]
-allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "Unicode-DFS-2016", "CC0-1.0", "MPL-2.0", "Zlib"]
+allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "Unicode-DFS-2016", "Unicode-3.0", "CC0-1.0", "MPL-2.0", "Zlib"]
 confidence-threshold = 0.8
 
 [advisories]
-ignore = []
+# RUSTSEC-2025-0098: unic-ucd-{version,ident} transitively via tauri-utils; upstream un-actionable for us.
+ignore = ["RUSTSEC-2025-0098"]
