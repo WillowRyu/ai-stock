@@ -296,6 +296,47 @@ pub async fn ai_has_key(state: State<'_, AppState>, provider: String) -> Result<
     }
 }
 
+#[tauri::command]
+pub async fn kis_set_credentials(
+    state: State<'_, AppState>,
+    app_key: String,
+    app_secret: String,
+) -> Result<(), String> {
+    state
+        .secrets
+        .set("kis_app_key", &app_key)
+        .await
+        .map_err(|e| e.to_string())?;
+    state
+        .secrets
+        .set("kis_app_secret", &app_secret)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn kis_clear_credentials(state: State<'_, AppState>) -> Result<(), String> {
+    state
+        .secrets
+        .delete("kis_app_key")
+        .await
+        .map_err(|e| e.to_string())?;
+    state
+        .secrets
+        .delete("kis_app_secret")
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn kis_has_credentials(state: State<'_, AppState>) -> Result<bool, String> {
+    let key = state.secrets.get("kis_app_key").await;
+    let secret = state.secrets.get("kis_app_secret").await;
+    Ok(key.is_ok() && secret.is_ok())
+}
+
 #[derive(Serialize, Clone)]
 pub struct CandleDto {
     pub opened_at: String,
