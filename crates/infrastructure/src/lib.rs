@@ -2,4 +2,5 @@
 pub mod clock;
 pub mod http;
 pub mod keyring_secrets;
+pub mod providers;
 pub mod sqlite;
