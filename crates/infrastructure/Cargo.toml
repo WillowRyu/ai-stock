@@ -19,6 +19,8 @@ reqwest.workspace = true
 sqlx.workspace = true
 keyring.workspace = true
 scraper = "0.20"
+eventsource-stream = "0.2"
+futures.workspace = true
 
 [dev-dependencies]
 wiremock.workspace = true
