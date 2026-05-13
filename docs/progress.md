@@ -21,3 +21,13 @@
 - [x] Task 1.4: Quote, Candle.
 - [x] Task 1.5: Holding, Watchlist, Portfolio.
 - [x] Task 1.6: QuoteSanityCheck, PortfolioCalc.
+
+### Phase 2 — Application layer
+
+- [x] Task 2.1: Clock, HttpClient, SecretStore, Notifier ports.
+- [x] Task 2.2: AssetProvider, NewsProvider ports.
+- [x] Task 2.3: Repo ports + AppSettings.
+- [x] Task 2.4: MarketService.
+- [x] Task 2.5: PortfolioService.
+- [x] Task 2.6: SettingsService.
+- [x] Task 2.7: PollScheduler.
