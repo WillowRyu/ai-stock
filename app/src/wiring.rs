@@ -44,15 +44,20 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
         coingecko_ids.insert(t.into(), id.into());
     }
 
+    // Provider ordering matters: MarketService::refresh tries each supporting provider
+    // in order and falls back on error. Put authenticated/working sources first to keep
+    // hot path cheap and logs quiet.
     let mut providers: Vec<Arc<dyn AssetProvider>> = vec![
         Arc::new(BinanceProvider::new(http.clone())),
         Arc::new(CoinGeckoProvider::new(http.clone(), coingecko_ids)),
-        Arc::new(YahooProvider::new(http.clone())),
-        Arc::new(NaverKrProvider::new(http.clone())),
     ];
     if let Some(key) = finnhub_key {
+        // Finnhub before Yahoo for US equities: Yahoo's public quote endpoint is
+        // currently authentication-gated and returns 401 without a crumb/cookie.
         providers.push(Arc::new(FinnhubProvider::new(http.clone(), key)));
     }
+    providers.push(Arc::new(YahooProvider::new(http.clone())));
+    providers.push(Arc::new(NaverKrProvider::new(http.clone())));
 
     let market = Arc::new(MarketService::new(watchlist_repo, providers));
     let portfolio = Arc::new(PortfolioService::new(portfolio_repo, market.clone()));

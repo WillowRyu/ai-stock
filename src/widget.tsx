@@ -30,19 +30,27 @@ function Widget() {
 
   return (
     <div
-      className="rounded-lg p-2 select-none"
+      className="rounded-lg select-none flex flex-col"
       style={{ backgroundColor: `rgba(15,23,42,${opacity})`, color: "#e2e8f0", height: "100vh" }}
-      data-tauri-drag-region
     >
-      <div className="flex justify-between items-center text-[10px] text-slate-400 px-2 mb-1">
-        <span>ai-stock</span>
-        <input type="range" min={0.1} max={1} step={0.05}
-               value={opacity}
-               onChange={(e) => changeOpacity(Number(e.target.value))}
-               className="w-20" />
-        <button onClick={() => getCurrentWebviewWindow().hide()} className="hover:text-slate-200">×</button>
+      <div
+        className="flex justify-between items-center text-[10px] text-slate-400 px-2 pt-2 pb-1"
+        data-tauri-drag-region
+      >
+        <span data-tauri-drag-region>ai-stock</span>
+        <input
+          type="range" min={0.1} max={1} step={0.05}
+          value={opacity}
+          onChange={(e) => changeOpacity(Number(e.target.value))}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="w-20"
+        />
+        <button
+          onClick={() => getCurrentWebviewWindow().hide()}
+          className="hover:text-slate-200 px-1"
+        >×</button>
       </div>
-      <div>
+      <div className="flex-1 px-2 pb-2 overflow-y-auto">
         {quotes.slice(0, 5).map((q) => (
           <WidgetRow
             key={q.symbol.quote_currency ? `${q.symbol.kind}:${q.symbol.ticker}:${q.symbol.quote_currency}` : `${q.symbol.kind}:${q.symbol.ticker}`}

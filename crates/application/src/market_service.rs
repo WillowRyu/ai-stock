@@ -48,20 +48,59 @@ impl MarketService {
         Ok(())
     }
 
+    /// Refresh quotes for every watchlist symbol. Per-symbol failures are logged
+    /// and do not fail the whole refresh; if a supporting provider returns an error,
+    /// the next supporting provider is tried in order.
     pub async fn refresh(&self) -> Result<Vec<Quote>, MarketError> {
         let wl = self.watchlist_repo.load().await?;
         let mut all_quotes = Vec::new();
 
         for symbol in wl.symbols() {
-            let provider = self
+            let supporting: Vec<&Arc<dyn AssetProvider>> = self
                 .providers
                 .iter()
-                .find(|p| p.supports(symbol))
-                .ok_or_else(|| MarketError::NoProvider(symbol.to_canonical_string()))?;
-            let quotes = provider.fetch_quotes(std::slice::from_ref(symbol)).await?;
-            for q in quotes {
-                self.last_quotes.write().await.insert(q.symbol.clone(), q.clone());
-                all_quotes.push(q);
+                .filter(|p| p.supports(symbol))
+                .collect();
+            if supporting.is_empty() {
+                tracing::warn!(
+                    symbol = %symbol.to_canonical_string(),
+                    "no provider supports symbol; skipping",
+                );
+                continue;
+            }
+            let mut got = false;
+            for provider in &supporting {
+                match provider.fetch_quotes(std::slice::from_ref(symbol)).await {
+                    Ok(qs) if !qs.is_empty() => {
+                        for q in qs {
+                            self.last_quotes.write().await.insert(q.symbol.clone(), q.clone());
+                            all_quotes.push(q);
+                        }
+                        got = true;
+                        break;
+                    }
+                    Ok(_) => {
+                        tracing::debug!(
+                            provider = provider.name(),
+                            symbol = %symbol.to_canonical_string(),
+                            "provider returned empty result; trying next",
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            provider = provider.name(),
+                            symbol = %symbol.to_canonical_string(),
+                            error = ?e,
+                            "provider failed; trying next",
+                        );
+                    }
+                }
+            }
+            if !got {
+                tracing::warn!(
+                    symbol = %symbol.to_canonical_string(),
+                    "all providers failed for symbol",
+                );
             }
         }
         Ok(all_quotes)
@@ -137,7 +176,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refresh_errors_when_no_provider_supports_symbol() {
+    async fn refresh_skips_symbol_with_no_supporting_provider() {
         let mut wl_repo = MockWatchlistRepo::new();
         let mut wl = Watchlist::new();
         wl.add(Symbol::new(AssetKind::Forex, "EURUSD", None).unwrap());
@@ -148,6 +187,38 @@ mod tests {
         crypto.expect_supports().return_const(false);
 
         let svc = MarketService::new(Arc::new(wl_repo), vec![Arc::new(crypto)]);
-        assert!(matches!(svc.refresh().await, Err(MarketError::NoProvider(_))));
+        let quotes = svc.refresh().await.unwrap();
+        assert!(quotes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn refresh_falls_back_to_next_provider_on_failure() {
+        let mut wl_repo = MockWatchlistRepo::new();
+        let mut wl = Watchlist::new();
+        wl.add(s_aapl());
+        let wl_clone = wl.clone();
+        wl_repo.expect_load().returning(move || Ok(wl_clone.clone()));
+
+        let mut failing = MockAssetProvider::new();
+        failing.expect_name().return_const("failing");
+        failing.expect_supports().returning(|s| s.kind() == AssetKind::UsEquity);
+        failing.expect_fetch_quotes().returning(|_| Err(ProviderError::Upstream("blocked".into())));
+
+        let mut ok = MockAssetProvider::new();
+        ok.expect_name().return_const("ok");
+        ok.expect_supports().returning(|s| s.kind() == AssetKind::UsEquity);
+        ok.expect_fetch_quotes().returning(|symbols| {
+            Ok(symbols.iter().map(|s|
+                Quote::new(s.clone(), Price::new(Money::new(dec!(295), Currency::new("USD").unwrap())), Utc::now())
+            ).collect())
+        });
+
+        let svc = MarketService::new(
+            Arc::new(wl_repo),
+            vec![Arc::new(failing), Arc::new(ok)],
+        );
+        let quotes = svc.refresh().await.unwrap();
+        assert_eq!(quotes.len(), 1);
+        assert_eq!(quotes[0].price.money().amount(), dec!(295));
     }
 }
