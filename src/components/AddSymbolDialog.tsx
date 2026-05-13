@@ -90,7 +90,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
   const presets = PRESETS[kind] ?? [];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}

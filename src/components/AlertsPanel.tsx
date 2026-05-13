@@ -67,7 +67,7 @@ export function AlertsPanel({ onClose }: { onClose(): void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[32rem] space-y-3">
         <div className="flex justify-between">
           <h3 className="text-lg font-semibold">알림</h3>

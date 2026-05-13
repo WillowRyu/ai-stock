@@ -71,7 +71,7 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
       <form onClick={(e) => e.stopPropagation()} onSubmit={submit}
             className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-96 space-y-3">
         <h3 className="text-lg font-semibold">보유 자산 추가</h3>

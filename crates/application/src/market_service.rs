@@ -145,18 +145,49 @@ impl MarketService {
         self.last_quotes.read().await.clone()
     }
 
+    /// Try each supporting provider in order until one returns candles. Some
+    /// providers (Finnhub free, CoinGecko free) don't expose candle data even
+    /// though they support quote lookups for the same symbol, so a single
+    /// successful provider is enough.
     pub async fn fetch_candles(
         &self,
         symbol: &Symbol,
         from: chrono::DateTime<chrono::Utc>,
         to: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<domain::candle::Candle>, MarketError> {
-        let provider = self
+        let supporting: Vec<&Arc<dyn AssetProvider>> = self
             .providers
             .iter()
-            .find(|p| p.supports(symbol))
-            .ok_or_else(|| MarketError::NoProvider(symbol.to_canonical_string()))?;
-        Ok(provider.fetch_candles(symbol, from, to).await?)
+            .filter(|p| p.supports(symbol))
+            .collect();
+        if supporting.is_empty() {
+            return Err(MarketError::NoProvider(symbol.to_canonical_string()));
+        }
+        let mut last_err: Option<ProviderError> = None;
+        for provider in supporting {
+            match provider.fetch_candles(symbol, from, to).await {
+                Ok(candles) if !candles.is_empty() => return Ok(candles),
+                Ok(_) => {
+                    tracing::debug!(
+                        provider = provider.name(),
+                        symbol = %symbol.to_canonical_string(),
+                        "provider returned empty candles; trying next",
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        provider = provider.name(),
+                        symbol = %symbol.to_canonical_string(),
+                        error = ?e,
+                        "provider candle fetch failed; trying next",
+                    );
+                    last_err = Some(e);
+                }
+            }
+        }
+        Err(MarketError::Provider(
+            last_err.unwrap_or_else(|| ProviderError::Upstream("no provider returned candles".into())),
+        ))
     }
 }
 

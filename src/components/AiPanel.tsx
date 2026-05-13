@@ -34,7 +34,7 @@ export function AiPanel({ symbol, onClose }: { symbol: SymbolDto | null; onClose
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[36rem] space-y-3">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">AI 해석 {symbol && `· ${symbol.ticker}`}</h3>

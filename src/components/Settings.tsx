@@ -25,7 +25,7 @@ export function Settings({ onClose }: { onClose(): void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-96 space-y-3">
         <h3 className="text-lg font-semibold">설정</h3>
         <label className="block text-xs">폴링 주기 (초)
