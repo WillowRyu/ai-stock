@@ -111,7 +111,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
                 if (k === "crypto") setQuote(first.quote_currency ?? "USDT");
               }
             }}
-            className="mt-1 w-full bg-slate-800 rounded p-1.5"
+            className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
           >
             <option value="crypto">Crypto</option>
             <option value="us">US Equity</option>
@@ -147,7 +147,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
             <input
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              className="mt-1 w-full bg-slate-800 rounded p-1.5"
+              className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
             />
           </label>
           {kind === "crypto" && (
@@ -156,7 +156,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
               <input
                 value={quote}
                 onChange={(e) => setQuote(e.target.value)}
-                className="mt-1 w-full bg-slate-800 rounded p-1.5"
+                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
               />
             </label>
           )}

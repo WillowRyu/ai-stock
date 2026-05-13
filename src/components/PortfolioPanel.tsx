@@ -1,7 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePortfolioStore } from "../lib/state/portfolioStore";
+import { useWatchlistStore } from "../lib/state/watchlistStore";
 import { formatMoney } from "../lib/format";
-import type { AssetKind, HoldingDto } from "../lib/ipc";
+import type { HoldingDto, SymbolDto } from "../lib/ipc";
+
+function defaultCostCurrency(s: SymbolDto): string {
+  // For crypto we have the quote currency (USDT/USD/...) attached to the symbol.
+  if (s.quote_currency) return s.quote_currency;
+  switch (s.kind) {
+    case "us": return "USD";
+    case "kr": return "KRW";
+    case "fx":
+    case "com":
+    default:
+      return "USD";
+  }
+}
+
+function symbolLabel(s: SymbolDto): string {
+  return s.quote_currency ? `${s.ticker} / ${s.quote_currency}` : s.ticker;
+}
+
+function symbolKey(s: SymbolDto): string {
+  return s.quote_currency ? `${s.kind}:${s.ticker}:${s.quote_currency}` : `${s.kind}:${s.ticker}`;
+}
 
 export function PortfolioPanel() {
   const { valuation, refresh, upsert, remove } = usePortfolioStore();
@@ -62,46 +84,129 @@ export function PortfolioPanel() {
 }
 
 function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: HoldingDto): Promise<void> }) {
-  const [kind, setKind] = useState<AssetKind>("crypto");
-  const [ticker, setTicker] = useState("BTC");
-  const [quote, setQuote] = useState("USD");
-  const [qty, setQty] = useState("0");
-  const [cost, setCost] = useState("0");
-  const [ccy, setCcy] = useState("USD");
+  const watchlist = useWatchlistStore((s) => s.symbols);
+  const loadWatchlist = useWatchlistStore((s) => s.load);
+  // Make sure the watchlist is loaded when this dialog mounts (it might not be
+  // populated if the user opened the portfolio panel before the watchlist).
+  useEffect(() => {
+    if (watchlist.length === 0) loadWatchlist();
+  }, [watchlist.length, loadWatchlist]);
+
+  const [selectedKey, setSelectedKey] = useState<string>(() =>
+    watchlist[0] ? symbolKey(watchlist[0]) : "",
+  );
+  const [qty, setQty] = useState("");
+  const [cost, setCost] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Keep selection valid when watchlist becomes available.
+  useEffect(() => {
+    if (!selectedKey && watchlist[0]) setSelectedKey(symbolKey(watchlist[0]));
+  }, [selectedKey, watchlist]);
+
+  const selectedSymbol = useMemo<SymbolDto | undefined>(
+    () => watchlist.find((s) => symbolKey(s) === selectedKey),
+    [watchlist, selectedKey],
+  );
+  const costCurrency = selectedSymbol ? defaultCostCurrency(selectedSymbol) : "USD";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!selectedSymbol) {
+      setError("종목을 선택하세요");
+      return;
+    }
+    if (!qty || Number(qty) <= 0) {
+      setError("수량을 0보다 크게 입력하세요");
+      return;
+    }
+    if (!cost || Number(cost) <= 0) {
+      setError("평단가를 0보다 크게 입력하세요");
+      return;
+    }
+    setBusy(true);
     try {
       await onSubmit({
-        symbol: { kind, ticker: ticker.toUpperCase(), quote_currency: kind === "crypto" ? quote.toUpperCase() : null },
-        quantity: qty, avg_cost_amount: cost, avg_cost_currency: ccy.toUpperCase(),
+        symbol: selectedSymbol,
+        quantity: qty,
+        avg_cost_amount: cost,
+        avg_cost_currency: costCurrency,
       });
       onClose();
-    } catch (err) { setError(String(err)); }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
-      <form onClick={(e) => e.stopPropagation()} onSubmit={submit}
-            className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-96 space-y-3">
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={submit}
+        className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[24rem] space-y-4"
+      >
         <h3 className="text-lg font-semibold">보유 자산 추가</h3>
-        <select value={kind} onChange={(e) => setKind(e.target.value as AssetKind)} className="w-full bg-slate-800 rounded p-1.5">
-          <option value="crypto">Crypto</option>
-          <option value="us">US Equity</option>
-        </select>
-        <input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="ticker" className="w-full bg-slate-800 rounded p-1.5" />
-        {kind === "crypto" && (
-          <input value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="quote currency" className="w-full bg-slate-800 rounded p-1.5" />
+
+        {watchlist.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            먼저 좌측 워치리스트에 종목을 추가해 주세요. 추가된 종목 중에서 골라 보유량과 평단가를
+            입력하면 실시간 평가가 시작됩니다.
+          </p>
+        ) : (
+          <>
+            <label className="block text-sm">
+              <span className="text-slate-300">종목</span>
+              <select
+                value={selectedKey}
+                onChange={(e) => setSelectedKey(e.target.value)}
+                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+              >
+                {watchlist.map((s) => (
+                  <option key={symbolKey(s)} value={symbolKey(s)}>
+                    {symbolLabel(s)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="text-slate-300">보유 수량</span>
+              <input
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                inputMode="decimal"
+                placeholder="예: 0.5"
+                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="text-slate-300">평단가 ({costCurrency})</span>
+              <input
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                inputMode="decimal"
+                placeholder="1주/1개당 평균 매입가"
+                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+              />
+            </label>
+          </>
         )}
-        <input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="수량" className="w-full bg-slate-800 rounded p-1.5" />
-        <input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="평단가" className="w-full bg-slate-800 rounded p-1.5" />
-        <input value={ccy} onChange={(e) => setCcy(e.target.value)} placeholder="통화" className="w-full bg-slate-800 rounded p-1.5" />
+
         {error && <div className="text-rose-400 text-xs">{error}</div>}
         <div className="flex gap-2 justify-end">
-          <button type="button" onClick={onClose} className="px-3 py-1 text-sm rounded bg-slate-800">취소</button>
-          <button type="submit" className="px-3 py-1 text-sm rounded bg-emerald-600">저장</button>
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm rounded bg-slate-800 hover:bg-slate-700">취소</button>
+          <button
+            type="submit"
+            disabled={busy || watchlist.length === 0}
+            className="px-3 py-1.5 text-sm rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {busy ? "저장 중..." : "저장"}
+          </button>
         </div>
       </form>
     </div>
