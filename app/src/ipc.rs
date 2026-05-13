@@ -2,6 +2,7 @@ use crate::wiring::AppState;
 use application::indicator_service::compute_snapshot;
 use application::ports::repos::AppSettings;
 use domain::{
+    alert::{AlertCondition, AlertRule},
     asset::AssetKind, holding::Holding, money::{Currency, Money}, quantity::Quantity, symbol::Symbol,
 };
 use rust_decimal::Decimal;
@@ -191,4 +192,67 @@ pub async fn widget_toggle(app: tauri::AppHandle) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct AlertRuleDto {
+    pub id: i64,
+    pub symbol: SymbolDto,
+    pub condition: String,
+    pub threshold_amount: String,
+    pub threshold_currency: String,
+    pub enabled: bool,
+    pub cooldown_secs: u32,
+}
+
+fn rule_to_dto(r: &AlertRule) -> AlertRuleDto {
+    let (cond, thresh) = match &r.condition {
+        AlertCondition::Above(m) => ("above", m),
+        AlertCondition::Below(m) => ("below", m),
+    };
+    AlertRuleDto {
+        id: r.id,
+        symbol: symbol_to_dto(&r.symbol),
+        condition: cond.into(),
+        threshold_amount: thresh.amount().to_string(),
+        threshold_currency: thresh.currency().as_str().into(),
+        enabled: r.enabled,
+        cooldown_secs: r.cooldown_secs,
+    }
+}
+
+fn dto_to_rule(d: &AlertRuleDto) -> Result<AlertRule, String> {
+    let symbol = dto_to_symbol(&d.symbol)?;
+    let amount = Decimal::from_str(&d.threshold_amount).map_err(|e| e.to_string())?;
+    let ccy = Currency::new(&d.threshold_currency).map_err(|e| format!("{e:?}"))?;
+    let cond = match d.condition.as_str() {
+        "above" => AlertCondition::Above(Money::new(amount, ccy)),
+        "below" => AlertCondition::Below(Money::new(amount, ccy)),
+        other => return Err(format!("unknown condition: {other}")),
+    };
+    Ok(AlertRule {
+        id: d.id,
+        symbol,
+        condition: cond,
+        enabled: d.enabled,
+        cooldown_secs: d.cooldown_secs,
+        last_fired_at: None,
+    })
+}
+
+#[tauri::command]
+pub async fn alerts_list(state: State<'_, AppState>) -> Result<Vec<AlertRuleDto>, String> {
+    let rules = state.alerts.list().await.map_err(|e| e.to_string())?;
+    Ok(rules.iter().map(rule_to_dto).collect())
+}
+
+#[tauri::command]
+pub async fn alerts_create(state: State<'_, AppState>, rule: AlertRuleDto) -> Result<i64, String> {
+    let r = dto_to_rule(&rule)?;
+    state.alerts.create(r).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn alerts_delete(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    state.alerts.delete(id).await.map_err(|e| e.to_string())
 }

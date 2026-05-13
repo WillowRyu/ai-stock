@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ipc;
-#[allow(dead_code)] // TODO(M2 Phase 8.5): wired into AppState in next batch
 mod tauri_notifier;
 mod wiring;
 
@@ -24,6 +23,7 @@ async fn main() {
             ipc::settings_get, ipc::settings_save,
             ipc::widget_toggle,
             ipc::indicators_for,
+            ipc::alerts_list, ipc::alerts_create, ipc::alerts_delete,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -34,14 +34,20 @@ async fn main() {
                     .expect("app data dir")
                     .join("ai-stock.db");
                 std::fs::create_dir_all(db_path.parent().unwrap()).ok();
-                let state = wiring::assemble(db_path, std::env::var("FINNHUB_API_KEY").ok()).await;
+                let state = wiring::assemble(handle.clone(), db_path, std::env::var("FINNHUB_API_KEY").ok()).await;
                 handle.manage(state);
 
-                // Periodic event emit loop (every 1s): broadcast snapshot to UI.
-                let market = handle.state::<wiring::AppState>().market.clone();
+                // Periodic event emit loop (every 1s): refresh quotes, evaluate alerts,
+                // broadcast snapshot to UI.
+                let state = handle.state::<wiring::AppState>();
                 loop {
-                    let snap = market.snapshot().await;
-                    let dto: Vec<ipc::QuoteDto> = snap.values().map(|q| ipc::QuoteDto {
+                    let snap_map = state.market.snapshot().await;
+                    let quotes: Vec<domain::quote::Quote> = snap_map.values().cloned().collect();
+                    let alerts_svc = state.alerts.clone();
+                    for q in &quotes {
+                        let _ = alerts_svc.evaluate_quote(q).await;
+                    }
+                    let dto: Vec<ipc::QuoteDto> = quotes.iter().map(|q| ipc::QuoteDto {
                         symbol: ipc::SymbolDto {
                             kind: match q.symbol.kind() {
                                 domain::asset::AssetKind::Crypto => "crypto".into(),
