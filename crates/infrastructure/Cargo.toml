@@ -23,3 +23,4 @@ keyring.workspace = true
 wiremock.workspace = true
 tokio-test.workspace = true
 tempfile.workspace = true
+rust_decimal_macros = "1"

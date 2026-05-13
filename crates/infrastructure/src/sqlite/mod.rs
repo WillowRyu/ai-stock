@@ -1,3 +1,4 @@
+pub mod portfolio_repo;
 pub mod watchlist_repo;
 
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
