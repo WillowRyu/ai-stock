@@ -95,6 +95,13 @@ export const aiIpc = {
     invoke<void>("ai_commentary", { provider, symbol }),
 };
 
+export const kisIpc = {
+  setCredentials: (app_key: string, app_secret: string) =>
+    invoke<void>("kis_set_credentials", { app_key, app_secret }),
+  clear: () => invoke<void>("kis_clear_credentials"),
+  has: () => invoke<boolean>("kis_has_credentials"),
+};
+
 export function onAiChunk(cb: (text: string) => void): Promise<UnlistenFn> {
   return listen<string>("ai-chunk", (e) => cb(e.payload));
 }
