@@ -102,3 +102,27 @@ export function onAiDone(cb: () => void): Promise<UnlistenFn> {
 export function onAiError(cb: (msg: string) => void): Promise<UnlistenFn> {
   return listen<string>("ai-error", (e) => cb(e.payload));
 }
+
+export interface CandleDto {
+  opened_at: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
+}
+
+export interface ChartDataDto {
+  candles: CandleDto[];
+  sma_20: (string | null)[];
+  sma_50: (string | null)[];
+  rsi_14: (string | null)[];
+  macd: (string | null)[];
+  macd_signal: (string | null)[];
+  macd_histogram: (string | null)[];
+}
+
+export const chartIpc = {
+  fetch: (symbol: SymbolDto, days: number) =>
+    invoke<ChartDataDto>("chart_data", { symbol, days }),
+};
