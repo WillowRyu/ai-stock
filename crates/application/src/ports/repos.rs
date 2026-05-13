@@ -52,3 +52,16 @@ pub trait SettingsRepo: Send + Sync {
     async fn load(&self) -> Result<AppSettings, RepoError>;
     async fn save(&self, settings: &AppSettings) -> Result<(), RepoError>;
 }
+
+use domain::alert::AlertRule;
+
+#[cfg_attr(test, mockall::automock)]
+#[async_trait]
+pub trait AlertRepo: Send + Sync {
+    async fn list(&self) -> Result<Vec<AlertRule>, RepoError>;
+    async fn list_for_symbol(&self, symbol: &Symbol) -> Result<Vec<AlertRule>, RepoError>;
+    async fn insert(&self, rule: &AlertRule) -> Result<i64, RepoError>;
+    async fn update(&self, rule: &AlertRule) -> Result<(), RepoError>;
+    async fn delete(&self, id: i64) -> Result<(), RepoError>;
+    async fn record_fire(&self, id: i64, at: chrono::DateTime<chrono::Utc>) -> Result<(), RepoError>;
+}

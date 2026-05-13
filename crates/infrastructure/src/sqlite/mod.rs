@@ -1,3 +1,4 @@
+pub mod alert_repo;
 pub mod portfolio_repo;
 pub mod settings_repo;
 pub mod watchlist_repo;
