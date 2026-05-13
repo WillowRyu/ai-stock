@@ -2,6 +2,7 @@
 pub mod asset;
 pub mod candle;
 pub mod holding;
+pub mod indicators;
 pub mod money;
 pub mod percent;
 pub mod portfolio;
