@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::{
     asset::AssetKind,
-    candle::Candle,
+    candle::{Candle, CandleInterval},
     money::{Currency, Money},
     price::Price,
     quote::Quote,
@@ -89,6 +89,7 @@ impl AssetProvider for NaverKrProvider {
         _s: &Symbol,
         _from: DateTime<Utc>,
         _to: DateTime<Utc>,
+        _interval: CandleInterval,
     ) -> Result<Vec<Candle>, ProviderError> {
         Err(ProviderError::Upstream(
             "Naver candle endpoint not implemented in M2; pending".into(),

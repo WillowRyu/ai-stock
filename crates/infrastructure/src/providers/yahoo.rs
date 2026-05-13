@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use domain::{
     asset::AssetKind,
-    candle::Candle,
+    candle::{Candle, CandleInterval},
     money::{Currency, Money},
     price::Price,
     quote::Quote,
@@ -109,13 +109,25 @@ impl AssetProvider for YahooProvider {
         s: &Symbol,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
+        interval: CandleInterval,
     ) -> Result<Vec<Candle>, ProviderError> {
+        // Yahoo uses `60m` (not `1h`) and `1wk` (not `1w`).
+        let interval_str = match interval {
+            CandleInterval::OneMin => "1m",
+            CandleInterval::FiveMin => "5m",
+            CandleInterval::FifteenMin => "15m",
+            CandleInterval::ThirtyMin => "30m",
+            CandleInterval::OneHour => "60m",
+            CandleInterval::OneDay => "1d",
+            CandleInterval::OneWeek => "1wk",
+        };
         let url = format!(
-            "{}/v8/finance/chart/{}?period1={}&period2={}&interval=1d",
+            "{}/v8/finance/chart/{}?period1={}&period2={}&interval={}",
             self.base,
             s.ticker(),
             from.timestamp(),
-            to.timestamp()
+            to.timestamp(),
+            interval_str,
         );
         let resp = self
             .http

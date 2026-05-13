@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use domain::{
     asset::AssetKind,
-    candle::Candle,
+    candle::{Candle, CandleInterval},
     money::{Currency, Money},
     price::Price,
     quote::Quote,
@@ -103,13 +103,17 @@ impl AssetProvider for BinanceProvider {
         s: &Symbol,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
+        interval: CandleInterval,
     ) -> Result<Vec<Candle>, ProviderError> {
         let bs = Self::binance_symbol(s)
             .ok_or_else(|| ProviderError::UnsupportedSymbol(s.to_canonical_string()))?;
+        // Binance interval strings match our canonical form for everything we support.
+        let interval_str = interval.as_str();
         let url = format!(
-            "{}/api/v3/klines?symbol={}&interval=1h&startTime={}&endTime={}",
+            "{}/api/v3/klines?symbol={}&interval={}&startTime={}&endTime={}",
             self.base,
             bs,
+            interval_str,
             from.timestamp_millis(),
             to.timestamp_millis()
         );

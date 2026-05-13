@@ -154,6 +154,7 @@ impl MarketService {
         symbol: &Symbol,
         from: chrono::DateTime<chrono::Utc>,
         to: chrono::DateTime<chrono::Utc>,
+        interval: domain::candle::CandleInterval,
     ) -> Result<Vec<domain::candle::Candle>, MarketError> {
         let supporting: Vec<&Arc<dyn AssetProvider>> = self
             .providers
@@ -165,7 +166,7 @@ impl MarketService {
         }
         let mut last_err: Option<ProviderError> = None;
         for provider in supporting {
-            match provider.fetch_candles(symbol, from, to).await {
+            match provider.fetch_candles(symbol, from, to, interval).await {
                 Ok(candles) if !candles.is_empty() => return Ok(candles),
                 Ok(_) => {
                     tracing::debug!(

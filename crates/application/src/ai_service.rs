@@ -66,7 +66,7 @@ impl AiService {
         let indicators = {
             let from = chrono::Utc::now() - chrono::Duration::days(60);
             let to = chrono::Utc::now();
-            match self.market.fetch_candles(symbol, from, to).await {
+            match self.market.fetch_candles(symbol, from, to, domain::candle::CandleInterval::OneDay).await {
                 Ok(candles) if !candles.is_empty() => {
                     let snap = indicator_service::compute_snapshot(&candles);
                     Some(IndicatorContext {

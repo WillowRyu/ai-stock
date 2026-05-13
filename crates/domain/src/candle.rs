@@ -34,6 +34,45 @@ impl Candle {
     }
 }
 
+/// Candle resolution. Adapters map this to provider-specific interval strings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum CandleInterval {
+    OneMin,
+    FiveMin,
+    FifteenMin,
+    ThirtyMin,
+    OneHour,
+    OneDay,
+    OneWeek,
+}
+
+impl CandleInterval {
+    /// Canonical short string used over the IPC boundary.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::OneMin => "1m",
+            Self::FiveMin => "5m",
+            Self::FifteenMin => "15m",
+            Self::ThirtyMin => "30m",
+            Self::OneHour => "1h",
+            Self::OneDay => "1d",
+            Self::OneWeek => "1w",
+        }
+    }
+    pub fn parse(s: &str) -> Option<Self> {
+        Some(match s {
+            "1m" => Self::OneMin,
+            "5m" => Self::FiveMin,
+            "15m" => Self::FifteenMin,
+            "30m" => Self::ThirtyMin,
+            "1h" => Self::OneHour,
+            "1d" => Self::OneDay,
+            "1w" => Self::OneWeek,
+            _ => return None,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -63,5 +102,13 @@ mod tests {
             volume: dec!(1000), opened_at: Utc::now(),
         };
         assert!(c.validate().is_ok());
+    }
+
+    #[test]
+    fn candle_interval_round_trips() {
+        for s in ["1m", "5m", "15m", "30m", "1h", "1d", "1w"] {
+            assert_eq!(CandleInterval::parse(s).unwrap().as_str(), s);
+        }
+        assert!(CandleInterval::parse("3m").is_none());
     }
 }

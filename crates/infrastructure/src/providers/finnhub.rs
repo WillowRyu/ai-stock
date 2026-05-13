@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::{
     asset::AssetKind,
-    candle::Candle,
+    candle::{Candle, CandleInterval},
     money::{Currency, Money},
     price::Price,
     quote::Quote,
@@ -91,6 +91,7 @@ impl AssetProvider for FinnhubProvider {
         _s: &Symbol,
         _from: DateTime<Utc>,
         _to: DateTime<Utc>,
+        _interval: CandleInterval,
     ) -> Result<Vec<Candle>, ProviderError> {
         Err(ProviderError::Upstream(
             "Finnhub candle endpoint behind paid tier; deferred".into(),

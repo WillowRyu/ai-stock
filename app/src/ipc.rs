@@ -166,7 +166,7 @@ pub async fn indicators_for(
     let to = chrono::Utc::now();
     let candles = state
         .market
-        .fetch_candles(&s, from, to)
+        .fetch_candles(&s, from, to, domain::candle::CandleInterval::OneDay)
         .await
         .map_err(|e| e.to_string())?;
     let snap = compute_snapshot(&candles);
@@ -322,13 +322,18 @@ pub async fn chart_data(
     state: State<'_, AppState>,
     symbol: SymbolDto,
     days: u32,
+    interval: Option<String>,
 ) -> Result<ChartDataDto, String> {
     let sym = dto_to_symbol(&symbol)?;
+    let interval = interval
+        .as_deref()
+        .and_then(domain::candle::CandleInterval::parse)
+        .unwrap_or(domain::candle::CandleInterval::OneDay);
     let from = chrono::Utc::now() - chrono::Duration::days(days as i64);
     let to = chrono::Utc::now();
     let candles = state
         .market
-        .fetch_candles(&sym, from, to)
+        .fetch_candles(&sym, from, to, interval)
         .await
         .map_err(|e| e.to_string())?;
     let series: IndicatorSeries = compute_series(&candles);

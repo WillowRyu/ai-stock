@@ -7,14 +7,22 @@ import {
   type HistogramData,
   type Time,
 } from "lightweight-charts";
-import { chartIpc, type ChartDataDto, type SymbolDto } from "../lib/ipc";
+import { chartIpc, type CandleInterval, type ChartDataDto, type SymbolDto } from "../lib/ipc";
 
-const RANGES = [
-  { key: "1M", days: 30 },
-  { key: "3M", days: 90 },
-  { key: "6M", days: 180 },
-  { key: "1Y", days: 365 },
+// Predefined (range × interval) combinations. Combinations are chosen so the
+// API returns roughly 100-500 bars per request, which both Binance (default
+// limit 500) and Yahoo (limits intraday intervals to short ranges) honor.
+const PRESETS = [
+  { key: "1H",  days: 1,    interval: "1m"  as CandleInterval, timeVisible: true  },
+  { key: "1D",  days: 1,    interval: "5m"  as CandleInterval, timeVisible: true  },
+  { key: "1W",  days: 7,    interval: "30m" as CandleInterval, timeVisible: true  },
+  { key: "1M",  days: 30,   interval: "1h"  as CandleInterval, timeVisible: true  },
+  { key: "3M",  days: 90,   interval: "1d"  as CandleInterval, timeVisible: false },
+  { key: "6M",  days: 180,  interval: "1d"  as CandleInterval, timeVisible: false },
+  { key: "1Y",  days: 365,  interval: "1d"  as CandleInterval, timeVisible: false },
+  { key: "5Y",  days: 1825, interval: "1w"  as CandleInterval, timeVisible: false },
 ] as const;
+type Preset = (typeof PRESETS)[number];
 
 const COLORS = {
   bg: "#0f172a",
@@ -33,7 +41,7 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
   const rsiRef = useRef<HTMLDivElement>(null);
   const macdRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<{ price?: IChartApi; rsi?: IChartApi; macd?: IChartApi }>({});
-  const [days, setDays] = useState<number>(90);
+  const [preset, setPreset] = useState<Preset>(PRESETS.find((p) => p.key === "3M")!);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,10 +61,10 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
     setError(null);
 
     chartIpc
-      .fetch(symbol, days)
+      .fetch(symbol, preset.days, preset.interval)
       .then((data) => {
         if (cancelled) return;
-        renderCharts(data);
+        renderCharts(data, preset.timeVisible);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -71,9 +79,9 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol?.kind, symbol?.ticker, symbol?.quote_currency, days]);
+  }, [symbol?.kind, symbol?.ticker, symbol?.quote_currency, preset.key]);
 
-  function renderCharts(data: ChartDataDto) {
+  function renderCharts(data: ChartDataDto, timeVisible: boolean) {
     disposeCharts();
     if (!priceRef.current || !rsiRef.current || !macdRef.current) return;
     if (data.candles.length === 0) {
@@ -84,7 +92,7 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
     const baseOptions = {
       layout: { background: { color: COLORS.bg }, textColor: COLORS.text },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
-      timeScale: { borderColor: COLORS.grid, timeVisible: false },
+      timeScale: { borderColor: COLORS.grid, timeVisible, secondsVisible: false },
       rightPriceScale: { borderColor: COLORS.grid },
       autoSize: true,
     } as const;
@@ -164,20 +172,22 @@ export function ChartPanel({ symbol }: { symbol: SymbolDto | null }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-1 text-xs">
-        {RANGES.map((r) => (
+      <div className="flex flex-wrap gap-1 text-xs items-center">
+        {PRESETS.map((p) => (
           <button
-            key={r.key}
-            onClick={() => setDays(r.days)}
+            key={p.key}
+            onClick={() => setPreset(p)}
+            title={`${p.days >= 365 ? `${Math.round(p.days / 365)}년` : p.days >= 30 ? `${Math.round(p.days / 30)}개월` : `${p.days}일`} · ${p.interval}봉`}
             className={
               "px-2 py-1 rounded " +
-              (days === r.days ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700")
+              (preset.key === p.key ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700")
             }
           >
-            {r.key}
+            {p.key}
           </button>
         ))}
-        {loading && <span className="text-slate-500 self-center ml-2">로딩...</span>}
+        <span className="text-[10px] text-slate-500 ml-2">{preset.interval} 봉</span>
+        {loading && <span className="text-slate-500 ml-2">로딩...</span>}
       </div>
       {error && <div className="text-rose-400 text-xs">{error}</div>}
       <div className="text-[10px] text-slate-500">가격 · SMA20(노랑) · SMA50(보라)</div>

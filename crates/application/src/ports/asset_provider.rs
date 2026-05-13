@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use domain::{candle::Candle, quote::Quote, symbol::Symbol};
+use domain::{candle::{Candle, CandleInterval}, quote::Quote, symbol::Symbol};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -28,5 +28,6 @@ pub trait AssetProvider: Send + Sync {
         symbol: &Symbol,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
+        interval: CandleInterval,
     ) -> Result<Vec<Candle>, ProviderError>;
 }

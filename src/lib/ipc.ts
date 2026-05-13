@@ -124,9 +124,11 @@ export interface ChartDataDto {
   macd_histogram: (string | null)[];
 }
 
+export type CandleInterval = "1m" | "5m" | "15m" | "30m" | "1h" | "1d" | "1w";
+
 export const chartIpc = {
-  fetch: (symbol: SymbolDto, days: number) =>
-    invoke<ChartDataDto>("chart_data", { symbol, days }),
+  fetch: (symbol: SymbolDto, days: number, interval: CandleInterval = "1d") =>
+    invoke<ChartDataDto>("chart_data", { symbol, days, interval }),
 };
 
 export interface ProviderErrorDto {

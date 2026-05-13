@@ -67,7 +67,7 @@ impl AlertService {
         let (rsi_14, macd, macd_signal, prev_macd, prev_macd_signal) = if needs_indicators {
             let from = chrono::Utc::now() - chrono::Duration::days(90);
             let to = chrono::Utc::now();
-            match self.market.fetch_candles(&quote.symbol, from, to).await {
+            match self.market.fetch_candles(&quote.symbol, from, to, domain::candle::CandleInterval::OneDay).await {
                 Ok(candles) if !candles.is_empty() => {
                     let series = compute_series(&candles);
                     let last = |v: &[Option<rust_decimal::Decimal>]| v.last().copied().flatten();
