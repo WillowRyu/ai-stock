@@ -1,3 +1,4 @@
+pub mod anthropic;
 pub mod binance;
 pub mod coingecko;
 pub mod finnhub;
