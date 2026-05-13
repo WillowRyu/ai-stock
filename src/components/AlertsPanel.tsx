@@ -1,5 +1,20 @@
 import { useEffect, useState } from "react";
+import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import { alertsIpc, type AlertConditionKind, type AlertRuleDto, type AssetKind } from "../lib/ipc";
+
+async function ensureNotificationPermission(): Promise<boolean> {
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) {
+      const result = await requestPermission();
+      granted = result === "granted";
+    }
+    return granted;
+  } catch {
+    // Older API / unsupported — assume ok and let the backend handle it.
+    return true;
+  }
+}
 
 const CONDITION_OPTIONS: { value: AlertConditionKind; label: string; needsThreshold: boolean; needsCurrency: boolean }[] = [
   { value: "above", label: "가격 ≥ 임계값", needsThreshold: true, needsCurrency: true },
@@ -46,6 +61,11 @@ export function AlertsPanel({ onClose }: { onClose(): void }) {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const ok = await ensureNotificationPermission();
+    if (!ok) {
+      setError("알림 권한이 거부되어 알림이 표시되지 않습니다. 시스템 설정 → 알림에서 허용해 주세요.");
+      // Continue creating the rule anyway — it'll fire silently if the user changes their mind.
+    }
     try {
       await alertsIpc.create({
         id: 0,
