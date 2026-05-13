@@ -147,7 +147,7 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[24rem] space-y-4"
+        className="bg-slate-900 border border-slate-700 rounded-lg p-5 w-[28rem] space-y-4"
       >
         <h3 className="text-lg font-semibold">보유 자산 추가</h3>
 
@@ -163,7 +163,7 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
               <select
                 value={selectedKey}
                 onChange={(e) => setSelectedKey(e.target.value)}
-                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
               >
                 {watchlist.map((s) => (
                   <option key={symbolKey(s)} value={symbolKey(s)}>
@@ -180,7 +180,7 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
                 onChange={(e) => setQty(e.target.value)}
                 inputMode="decimal"
                 placeholder="예: 0.5"
-                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
               />
             </label>
 
@@ -191,7 +191,7 @@ function AddHoldingDialog({ onClose, onSubmit }: { onClose(): void; onSubmit(h: 
                 onChange={(e) => setCost(e.target.value)}
                 inputMode="decimal"
                 placeholder="1주/1개당 평균 매입가"
-                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
               />
             </label>
           </>

@@ -98,7 +98,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
       >
         <h3 className="text-lg font-semibold">종목 추가</h3>
 
-        <label className="block text-xs">
+        <label className="block text-sm">
           자산 유형
           <select
             value={kind}
@@ -111,7 +111,7 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
                 if (k === "crypto") setQuote(first.quote_currency ?? "USDT");
               }
             }}
-            className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+            className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
           >
             <option value="crypto">Crypto</option>
             <option value="us">US Equity</option>
@@ -142,21 +142,21 @@ export function AddSymbolDialog({ onClose }: { onClose(): void }) {
 
         <div className="border-t border-slate-800 pt-3">
           <div className="text-[10px] uppercase text-slate-500 mb-1">직접 입력</div>
-          <label className="block text-xs">
+          <label className="block text-sm">
             티커
             <input
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+              className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
             />
           </label>
           {kind === "crypto" && (
-            <label className="block text-xs mt-2">
+            <label className="block text-sm mt-2">
               호가 통화 (예: USDT, USD)
               <input
                 value={quote}
                 onChange={(e) => setQuote(e.target.value)}
-                className="mt-1 w-full bg-slate-800 rounded p-2 text-sm"
+                className="mt-1 w-full bg-slate-800 rounded px-3 py-2.5 text-base"
               />
             </label>
           )}
