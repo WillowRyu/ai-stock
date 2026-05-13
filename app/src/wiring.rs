@@ -2,7 +2,7 @@ use application::{
     alert_service::AlertService,
     market_service::MarketService, portfolio_service::PortfolioService,
     settings_service::SettingsService,
-    ports::{asset_provider::AssetProvider, http_client::HttpClient},
+    ports::{asset_provider::AssetProvider, http_client::HttpClient, repos::SettingsRepo},
     poll_scheduler::PollScheduler,
 };
 use infrastructure::{
@@ -55,12 +55,18 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
 
     let market = Arc::new(MarketService::new(watchlist_repo, providers));
     let portfolio = Arc::new(PortfolioService::new(portfolio_repo, market.clone()));
-    let settings = Arc::new(SettingsService::new(settings_repo));
+    let settings = Arc::new(SettingsService::new(settings_repo.clone()));
     let secrets = Arc::new(KeyringSecretStore::new("dev.willowryu.aistock"));
 
-    // Kick off poller (5s default). Future: read from settings.
+    // Poll interval is read once at startup from SettingsRepo. Live updates
+    // (settings change → scheduler restart) are deferred to M3.
+    let initial_interval = settings_repo
+        .load()
+        .await
+        .map(|s| s.poll_interval_secs.max(1))
+        .unwrap_or(5);
     let (scheduler, _rx) = PollScheduler::new(market.clone(), clock_arc.clone());
-    scheduler.start(std::time::Duration::from_secs(5));
+    scheduler.start(std::time::Duration::from_secs(initial_interval as u64));
 
     AppState { market, portfolio, settings, alerts, secrets }
 }
