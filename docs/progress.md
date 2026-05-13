@@ -43,3 +43,16 @@
 - [x] Task 3.7: CoinGeckoProvider.
 - [x] Task 3.8: YahooProvider.
 - [x] Task 3.9: FinnhubProvider.
+
+### Phase 4 — Tauri wiring
+
+- [x] Task 4.1: AppState wiring.
+- [x] Task 4.2: IPC commands + quote-update broadcast.
+
+### Phase 5 — Frontend
+
+- [x] Task 5.1: Typed IPC bindings.
+- [x] Task 5.2: Zustand stores.
+- [x] Task 5.3: Watchlist + DetailPane + AddSymbol.
+- [x] Task 5.4: PortfolioPanel + Settings + i18n stubs.
+- [x] Task 5.5: Floating widget with transparency.
