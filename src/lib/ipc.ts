@@ -66,3 +66,19 @@ export const ipc = {
 export function onQuoteUpdate(cb: (quotes: QuoteDto[]) => void): Promise<UnlistenFn> {
   return listen<QuoteDto[]>("quote-update", (e) => cb(e.payload));
 }
+
+export interface AlertRuleDto {
+  id: number;
+  symbol: SymbolDto;
+  condition: "above" | "below";
+  threshold_amount: string;
+  threshold_currency: string;
+  enabled: boolean;
+  cooldown_secs: number;
+}
+
+export const alertsIpc = {
+  list: () => invoke<AlertRuleDto[]>("alerts_list"),
+  create: (rule: AlertRuleDto) => invoke<number>("alerts_create", { rule }),
+  delete: (id: number) => invoke<void>("alerts_delete", { id }),
+};
