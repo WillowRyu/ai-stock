@@ -7,6 +7,28 @@ mod wiring;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 
+fn apply_window_effects(window: &tauri::WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    {
+        use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+        let _ = apply_vibrancy(
+            window,
+            NSVisualEffectMaterial::Sidebar,
+            Some(NSVisualEffectState::Active),
+            Some(10.0),
+        );
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use window_vibrancy::apply_mica;
+        let _ = apply_mica(window, Some(true));
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = window;
+    }
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     tracing_subscriber::fmt()
@@ -29,6 +51,13 @@ async fn main() {
             ipc::kis_set_credentials, ipc::kis_clear_credentials, ipc::kis_has_credentials,
         ])
         .setup(|app| {
+            if let Some(main_window) = app.get_webview_window("main") {
+                apply_window_effects(&main_window);
+            }
+            if let Some(widget_window) = app.get_webview_window("widget") {
+                apply_window_effects(&widget_window);
+            }
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let db_path = handle
