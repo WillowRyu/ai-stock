@@ -1,5 +1,6 @@
 import { useQuotesStore, quoteKey } from "../lib/state/quotesStore";
 import { formatPrice } from "../lib/format";
+import { ChartPanel } from "./ChartPanel";
 import type { SymbolDto } from "../lib/ipc";
 
 export function DetailPane({ symbol }: { symbol: SymbolDto | null }) {
@@ -10,10 +11,10 @@ export function DetailPane({ symbol }: { symbol: SymbolDto | null }) {
   const q = quotes[quoteKey(symbol)];
   const changePct = q?.change_24h ? Number(q.change_24h) * 100 : null;
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 p-4 overflow-y-auto">
       <div className="text-xs uppercase text-slate-500">{symbol.kind}</div>
       <h2 className="text-2xl font-semibold">{symbol.ticker}{symbol.quote_currency ? `/${symbol.quote_currency}` : ""}</h2>
-      <div className="mt-4 flex items-baseline gap-3">
+      <div className="mt-2 flex items-baseline gap-3">
         <div className="text-4xl tabular-nums">{q ? formatPrice(q.price) : "—"}</div>
         <div className="text-slate-400">{q?.currency ?? ""}</div>
         {changePct !== null && (
@@ -22,7 +23,8 @@ export function DetailPane({ symbol }: { symbol: SymbolDto | null }) {
           </div>
         )}
       </div>
-      <p className="mt-2 text-xs text-slate-500">Last observed: {q?.observed_at ?? "—"}</p>
+      <p className="mt-1 text-xs text-slate-500 mb-3">Last observed: {q?.observed_at ?? "—"}</p>
+      <ChartPanel symbol={symbol} />
     </main>
   );
 }
