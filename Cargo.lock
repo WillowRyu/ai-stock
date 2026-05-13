@@ -120,6 +120,7 @@ dependencies = [
  "domain",
  "mockall",
  "rust_decimal",
+ "rust_decimal_macros",
  "serde",
  "thiserror 1.0.69",
  "tokio",
