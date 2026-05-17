@@ -32,7 +32,6 @@ export function Settings({ onClose }: { onClose(): void }) {
   const [kisHas, setKisHas] = useState(false);
   const [kisDraft, setKisDraft] = useState({ app_key: "", app_secret: "" });
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     load().then(() => setDraft(useSettingsStore.getState().settings));
@@ -54,11 +53,12 @@ export function Settings({ onClose }: { onClose(): void }) {
     setSaving(true);
     try {
       await save(draft);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-    } finally {
+    } catch {
+      // Keep the dialog open so the user can retry.
       setSaving(false);
+      return;
     }
+    onClose();
   }
 
   async function saveAiKey() {
@@ -302,9 +302,6 @@ export function Settings({ onClose }: { onClose(): void }) {
 
         {/* Sticky footer */}
         <div className="px-6 py-4 border-t border-slate-300/40 dark:border-white/10 flex items-center justify-end gap-2">
-          {saved && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 mr-auto">저장됨</span>
-          )}
           <button onClick={onClose} className="btn-secondary">취소</button>
           <button onClick={commit} disabled={saving} className="btn-primary disabled:opacity-50">
             {saving ? "저장 중..." : "저장"}

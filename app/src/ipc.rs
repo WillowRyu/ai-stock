@@ -10,7 +10,7 @@ use futures::StreamExt;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SymbolDto { pub kind: String, pub ticker: String, pub quote_currency: Option<String> }
@@ -497,5 +497,24 @@ pub async fn ai_send_message(
 pub async fn ai_cancel(state: State<'_, AppState>) -> Result<(), String> {
     // `send` fails only when no turn is in flight (receiver dropped) — ignore.
     let _ = state.ai_cancel.lock().unwrap().send(true);
+    Ok(())
+}
+
+/// Set the native window appearance for both windows so the macOS vibrancy
+/// material renders light/dark to match the in-app theme. The in-app theme
+/// only toggles a CSS class; without this the OS-driven vibrancy backdrop can
+/// disagree with the theme and make text unreadable.
+#[tauri::command]
+pub fn set_window_theme(app: tauri::AppHandle, dark: bool) -> Result<(), String> {
+    let theme = if dark {
+        tauri::Theme::Dark
+    } else {
+        tauri::Theme::Light
+    };
+    for label in ["main", "widget"] {
+        if let Some(window) = app.get_webview_window(label) {
+            window.set_theme(Some(theme)).map_err(|e| e.to_string())?;
+        }
+    }
     Ok(())
 }
