@@ -44,7 +44,8 @@ impl Conversation {
         self.messages.is_empty()
     }
     /// The most recent `n` messages — used to bound how much history is sent
-    /// to the model. Returns all messages when `n` exceeds the length.
+    /// to the model. Returns all messages when `n >= len`, or an empty slice
+    /// when `n = 0`.
     pub fn recent(&self, n: usize) -> &[Message] {
         let start = self.messages.len().saturating_sub(n);
         &self.messages[start..]
@@ -86,5 +87,18 @@ mod tests {
         let mut c = Conversation::new();
         c.push_user("only");
         assert_eq!(c.recent(50).len(), 1);
+    }
+
+    #[test]
+    fn recent_zero_returns_empty() {
+        let mut c = Conversation::new();
+        c.push_user("message");
+        assert_eq!(c.recent(0).len(), 0);
+    }
+
+    #[test]
+    fn recent_on_empty_conversation_returns_empty() {
+        let c = Conversation::new();
+        assert_eq!(c.recent(10).len(), 0);
     }
 }
