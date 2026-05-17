@@ -25,6 +25,9 @@ pub struct AppState {
     pub secrets: Arc<KeyringSecretStore>,
     pub ai: Arc<AiService>,
     pub fx: FxRateBook,
+    /// Sender side of a `watch` channel used to cancel the in-flight AI turn.
+    /// Each turn replaces this with a fresh channel.
+    pub ai_cancel: std::sync::Mutex<tokio::sync::watch::Sender<bool>>,
 }
 
 pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Option<String>) -> AppState {
@@ -100,5 +103,14 @@ pub async fn assemble(app_handle: AppHandle, db_path: PathBuf, finnhub_key: Opti
 
     let ai = Arc::new(AiService::new(secrets_dyn.clone(), market.clone(), news, provider_factory));
 
-    AppState { market, portfolio, settings, alerts, secrets, ai, fx }
+    AppState {
+        market,
+        portfolio,
+        settings,
+        alerts,
+        secrets,
+        ai,
+        fx,
+        ai_cancel: std::sync::Mutex::new(tokio::sync::watch::channel(false).0),
+    }
 }

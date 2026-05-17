@@ -47,7 +47,8 @@ async fn main() {
             ipc::indicators_for,
             ipc::chart_data,
             ipc::alerts_list, ipc::alerts_create, ipc::alerts_delete,
-            ipc::ai_set_key, ipc::ai_clear_key, ipc::ai_has_key, ipc::ai_commentary,
+            ipc::ai_set_key, ipc::ai_clear_key, ipc::ai_has_key,
+            ipc::ai_start_turn, ipc::ai_send_message, ipc::ai_cancel,
             ipc::kis_set_credentials, ipc::kis_clear_credentials, ipc::kis_has_credentials,
         ])
         .setup(|app| {
