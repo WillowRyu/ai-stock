@@ -50,6 +50,7 @@ async fn main() {
             ipc::ai_set_key, ipc::ai_clear_key, ipc::ai_has_key,
             ipc::ai_start_turn, ipc::ai_send_message, ipc::ai_cancel,
             ipc::kis_set_credentials, ipc::kis_clear_credentials, ipc::kis_has_credentials,
+            ipc::set_window_theme,
         ])
         .setup(|app| {
             if let Some(main_window) = app.get_webview_window("main") {

@@ -16,6 +16,23 @@ function applyDarkClass(dark: boolean) {
   document.documentElement.classList.toggle("dark", dark);
 }
 
+// Sync the native window appearance (macOS NSWindow.appearance) so the OS
+// vibrancy material renders light/dark to match the in-app theme. Without
+// this, picking the in-app light theme while the OS is in dark mode leaves a
+// dark vibrancy backdrop behind light-theme (dark) text — unreadable.
+function applyNativeTheme(dark: boolean) {
+  import("@tauri-apps/api/core")
+    .then(({ invoke }) => invoke("set_window_theme", { dark }))
+    .catch(() => {
+      /* not running inside Tauri (e.g. unit tests) — ignore */
+    });
+}
+
+function applyTheme(dark: boolean) {
+  applyDarkClass(dark);
+  applyNativeTheme(dark);
+}
+
 interface ThemeState {
   mode: ThemeMode;
   isDark: boolean;
@@ -33,7 +50,7 @@ const initialMode: ThemeMode = ((): ThemeMode => {
 })();
 
 const initialDark = effectiveDark(initialMode);
-applyDarkClass(initialDark);
+applyTheme(initialDark);
 
 // Re-apply on system theme change when in "system" mode.
 if (typeof window !== "undefined") {
@@ -41,7 +58,7 @@ if (typeof window !== "undefined") {
     const { mode } = useThemeStore.getState();
     if (mode === "system") {
       const d = isSystemDark();
-      applyDarkClass(d);
+      applyTheme(d);
       useThemeStore.setState({ isDark: d });
     }
   });
@@ -57,7 +74,7 @@ export const useThemeStore = create<ThemeState>((set) => ({
       /* ignore */
     }
     const d = effectiveDark(m);
-    applyDarkClass(d);
+    applyTheme(d);
     set({ mode: m, isDark: d });
   },
 }));
