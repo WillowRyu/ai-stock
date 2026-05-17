@@ -1,4 +1,5 @@
-use application::ports::ai_provider::{AiChunk, AiError, AiPrompt, AiProvider};
+use application::ports::ai_provider::{AiChunk, AiError, AiProvider, AiRequest};
+use domain::conversation::Role;
 use async_trait::async_trait;
 use eventsource_stream::Eventsource;
 use futures::stream::{BoxStream, StreamExt};
@@ -38,7 +39,7 @@ impl AnthropicProvider {
 
 #[derive(Serialize)]
 struct AnthropicMessage {
-    role: &'static str,
+    role: String,
     content: String,
 }
 
@@ -59,19 +60,27 @@ impl AiProvider for AnthropicProvider {
 
     async fn stream(
         &self,
-        prompt: AiPrompt,
+        request: AiRequest,
     ) -> Result<BoxStream<'static, Result<AiChunk, AiError>>, AiError> {
         if self.api_key.is_empty() {
             return Err(AiError::NotConfigured);
         }
+        let messages: Vec<AnthropicMessage> = request
+            .messages
+            .into_iter()
+            .map(|m| AnthropicMessage {
+                role: match m.role {
+                    Role::User => "user".into(),
+                    Role::Assistant => "assistant".into(),
+                },
+                content: m.content,
+            })
+            .collect();
         let body = AnthropicRequest {
             model: self.model.clone(),
-            system: prompt.system,
-            messages: vec![AnthropicMessage {
-                role: "user",
-                content: prompt.user,
-            }],
-            max_tokens: prompt.max_output_tokens,
+            system: request.system,
+            messages,
+            max_tokens: request.max_output_tokens,
             stream: true,
         };
         let req = self
@@ -126,6 +135,8 @@ mod tests {
         let sse = "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"text\":\"hi\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"text\":\" world\"}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
         Mock::given(method("POST"))
             .and(path("/v1/messages"))
+            .and(body_string_contains("\"system\":"))
+            .and(body_string_contains("\"role\":\"assistant\""))
             .respond_with(
                 ResponseTemplate::new(200)
                     .set_body_string(sse)
@@ -136,12 +147,15 @@ mod tests {
 
         let provider =
             AnthropicProvider::with_base("test".into(), "claude-3-7".into(), server.uri());
-        let prompt = AiPrompt {
+        let request = AiRequest {
             system: "x".into(),
-            user: "y".into(),
+            messages: vec![
+                domain::conversation::Message::user("y"),
+                domain::conversation::Message::assistant("earlier"),
+            ],
             max_output_tokens: 100,
         };
-        let mut stream = provider.stream(prompt).await.unwrap();
+        let mut stream = provider.stream(request).await.unwrap();
         let mut text = String::new();
         while let Some(c) = stream.next().await {
             match c.unwrap() {

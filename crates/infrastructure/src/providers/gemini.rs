@@ -1,4 +1,5 @@
-use application::ports::ai_provider::{AiChunk, AiError, AiPrompt, AiProvider};
+use application::ports::ai_provider::{AiChunk, AiError, AiProvider, AiRequest};
+use domain::conversation::Role;
 use async_trait::async_trait;
 use eventsource_stream::Eventsource;
 use futures::stream::{BoxStream, StreamExt};
@@ -44,7 +45,7 @@ struct GeminiPart {
 #[derive(Serialize)]
 struct GeminiContent {
     parts: Vec<GeminiPart>,
-    role: &'static str,
+    role: String,
 }
 
 #[derive(Serialize)]
@@ -62,21 +63,28 @@ impl AiProvider for GeminiProvider {
 
     async fn stream(
         &self,
-        prompt: AiPrompt,
+        request: AiRequest,
     ) -> Result<BoxStream<'static, Result<AiChunk, AiError>>, AiError> {
         if self.api_key.is_empty() {
             return Err(AiError::NotConfigured);
         }
+        let contents: Vec<GeminiContent> = request
+            .messages
+            .into_iter()
+            .map(|m| GeminiContent {
+                parts: vec![GeminiPart { text: m.content }],
+                // Gemini names the assistant role "model".
+                role: match m.role {
+                    Role::User => "user".into(),
+                    Role::Assistant => "model".into(),
+                },
+            })
+            .collect();
         let body = GeminiRequest {
-            contents: vec![GeminiContent {
-                parts: vec![GeminiPart { text: prompt.user }],
-                role: "user",
-            }],
+            contents,
             system_instruction: GeminiContent {
-                parts: vec![GeminiPart {
-                    text: prompt.system,
-                }],
-                role: "system",
+                parts: vec![GeminiPart { text: request.system }],
+                role: "system".into(),
             },
         };
         let url = format!(
@@ -130,6 +138,7 @@ mod tests {
         let sse = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"hi\"}]}}]}\n\ndata: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\" world\"}]}}]}\n\ndata: {\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":[{\"text\":\"\"}]}}]}\n\n";
         Mock::given(method("POST"))
             .and(path_regex(r"^/v1beta/models/.*:streamGenerateContent"))
+            .and(body_string_contains("\"role\":\"model\""))
             .respond_with(
                 ResponseTemplate::new(200)
                     .set_body_string(sse)
@@ -140,12 +149,15 @@ mod tests {
 
         let provider =
             GeminiProvider::with_base("k".into(), "gemini-2.0-flash".into(), server.uri());
-        let prompt = AiPrompt {
+        let request = AiRequest {
             system: "x".into(),
-            user: "y".into(),
+            messages: vec![
+                domain::conversation::Message::user("y"),
+                domain::conversation::Message::assistant("earlier"),
+            ],
             max_output_tokens: 100,
         };
-        let mut stream = provider.stream(prompt).await.unwrap();
+        let mut stream = provider.stream(request).await.unwrap();
         let mut text = String::new();
         while let Some(c) = stream.next().await {
             match c.unwrap() {

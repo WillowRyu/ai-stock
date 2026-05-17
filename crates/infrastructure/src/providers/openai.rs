@@ -1,4 +1,5 @@
-use application::ports::ai_provider::{AiChunk, AiError, AiPrompt, AiProvider};
+use application::ports::ai_provider::{AiChunk, AiError, AiProvider, AiRequest};
+use domain::conversation::Role;
 use async_trait::async_trait;
 use eventsource_stream::Eventsource;
 use futures::stream::{BoxStream, StreamExt};
@@ -38,7 +39,7 @@ impl OpenAiProvider {
 
 #[derive(Serialize)]
 struct OpenAiMessage {
-    role: &'static str,
+    role: String,
     content: String,
 }
 
@@ -58,25 +59,29 @@ impl AiProvider for OpenAiProvider {
 
     async fn stream(
         &self,
-        prompt: AiPrompt,
+        request: AiRequest,
     ) -> Result<BoxStream<'static, Result<AiChunk, AiError>>, AiError> {
         if self.api_key.is_empty() {
             return Err(AiError::NotConfigured);
         }
+        let mut messages = vec![OpenAiMessage {
+            role: "system".into(),
+            content: request.system,
+        }];
+        for m in request.messages {
+            messages.push(OpenAiMessage {
+                role: match m.role {
+                    Role::User => "user".into(),
+                    Role::Assistant => "assistant".into(),
+                },
+                content: m.content,
+            });
+        }
         let body = OpenAiRequest {
             model: self.model.clone(),
-            messages: vec![
-                OpenAiMessage {
-                    role: "system",
-                    content: prompt.system,
-                },
-                OpenAiMessage {
-                    role: "user",
-                    content: prompt.user,
-                },
-            ],
+            messages,
             stream: true,
-            max_tokens: prompt.max_output_tokens,
+            max_tokens: request.max_output_tokens,
         };
         let req = self
             .client
@@ -125,6 +130,8 @@ mod tests {
         let sse = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\ndata: [DONE]\n\n";
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
+            .and(body_string_contains("\"role\":\"assistant\""))
+            .and(body_string_contains("\"role\":\"system\""))
             .respond_with(
                 ResponseTemplate::new(200)
                     .set_body_string(sse)
@@ -134,12 +141,16 @@ mod tests {
             .await;
 
         let provider = OpenAiProvider::with_base("test-key".into(), "gpt-4o".into(), server.uri());
-        let prompt = AiPrompt {
+        let request = AiRequest {
             system: "be brief".into(),
-            user: "hello".into(),
+            messages: vec![
+                domain::conversation::Message::user("hello"),
+                domain::conversation::Message::assistant("hi"),
+                domain::conversation::Message::user("more"),
+            ],
             max_output_tokens: 100,
         };
-        let mut stream = provider.stream(prompt).await.unwrap();
+        let mut stream = provider.stream(request).await.unwrap();
         let mut collected = String::new();
         while let Some(chunk) = stream.next().await {
             match chunk.unwrap() {

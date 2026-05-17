@@ -1,11 +1,12 @@
 use crate::indicator_service;
 use crate::market_service::MarketService;
 use crate::ports::{
-    ai_provider::{AiChunk, AiError, AiPrompt, AiProvider},
+    ai_provider::{AiChunk, AiError, AiProvider, AiRequest},
     news_provider::NewsProvider,
     secret_store::{SecretError, SecretStore},
 };
 use domain::{
+    conversation::Message,
     prompt::{build_commentary_prompt, HeadlineRef, IndicatorContext, PromptContext},
     symbol::Symbol,
 };
@@ -90,6 +91,12 @@ impl AiService {
         };
         let (system, user) = build_commentary_prompt(&ctx);
 
-        Ok(provider.stream(AiPrompt { system, user, max_output_tokens: 600 }).await?)
+        Ok(provider
+            .stream(AiRequest {
+                system,
+                messages: vec![Message::user(user)],
+                max_output_tokens: 600,
+            })
+            .await?)
     }
 }

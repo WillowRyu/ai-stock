@@ -1,11 +1,14 @@
 use async_trait::async_trait;
+use domain::conversation::Message;
 use futures::stream::BoxStream;
 use thiserror::Error;
 
+/// A multi-turn request to an AI provider: a static system prompt plus the
+/// ordered message history.
 #[derive(Debug, Clone)]
-pub struct AiPrompt {
+pub struct AiRequest {
     pub system: String,
-    pub user: String,
+    pub messages: Vec<Message>,
     pub max_output_tokens: u32,
 }
 
@@ -34,5 +37,8 @@ pub enum AiError {
 #[async_trait]
 pub trait AiProvider: Send + Sync {
     fn name(&self) -> &'static str;
-    async fn stream(&self, prompt: AiPrompt) -> Result<BoxStream<'static, Result<AiChunk, AiError>>, AiError>;
+    async fn stream(
+        &self,
+        request: AiRequest,
+    ) -> Result<BoxStream<'static, Result<AiChunk, AiError>>, AiError>;
 }
