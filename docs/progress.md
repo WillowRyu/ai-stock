@@ -240,3 +240,20 @@ Plan: `docs/superpowers/plans/2026-05-17-m4-ai-assistant.md`.
   cancellation. Session-memory history (no persistence).
 - Next: M5 — 1.0 release prep (packaging, code signing, CI restoration, Naver
   contract test) + persistent chat history.
+
+## 2026-05-17 (M5) — Local release build
+
+Spec: `docs/superpowers/specs/2026-05-17-m5-local-release-design.md`.
+Plan: `docs/superpowers/plans/2026-05-17-m5-local-release.md`.
+
+- [x] Task 1: `#[ignore]`d Naver quote-scraper contract test.
+- [x] Task 2: verified `npm run tauri build` produces a runnable macOS app.
+- [x] Task 3: `docs/RELEASE.md` build guide; fixed README bundle path.
+- [x] Task 4: progress/CONTEXT close-out.
+
+### M5 complete
+
+- The app builds into a runnable, unsigned macOS `.app` via `npm run tauri build`; the procedure is documented in `docs/RELEASE.md`.
+- A network contract test (`cargo test -p infrastructure -- --ignored`) guards the Naver scraper against silent selector breakage.
+- Deferred to a public release: CI, code signing / notarization, the `1.0.0` version bump, and Windows/Linux build verification.
+- Next: M6 — persistent chat history (SQLite), deferred from M4.
