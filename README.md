@@ -57,8 +57,11 @@ npm run tauri dev
 
 ```bash
 npm run tauri build
-# .dmg / .msi / .AppImage 가 src-tauri/target/release/bundle/ 에 생성
+# 산출물: target/release/bundle/ (macOS: .app / .dmg)
 ```
+
+로컬 릴리스 빌드 절차(사전 요구사항, 서명되지 않은 앱 실행법 등)는
+[docs/RELEASE.md](docs/RELEASE.md) 참고.
 
 ## 테스트
 
