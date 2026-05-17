@@ -49,10 +49,18 @@ struct GeminiContent {
 }
 
 #[derive(Serialize)]
+struct GenerationConfig {
+    #[serde(rename = "maxOutputTokens")]
+    max_output_tokens: u32,
+}
+
+#[derive(Serialize)]
 struct GeminiRequest {
     contents: Vec<GeminiContent>,
     #[serde(rename = "systemInstruction")]
     system_instruction: GeminiContent,
+    #[serde(rename = "generationConfig")]
+    generation_config: GenerationConfig,
 }
 
 #[async_trait]
@@ -85,6 +93,9 @@ impl AiProvider for GeminiProvider {
             system_instruction: GeminiContent {
                 parts: vec![GeminiPart { text: request.system }],
                 role: "system".into(),
+            },
+            generation_config: GenerationConfig {
+                max_output_tokens: request.max_output_tokens,
             },
         };
         let url = format!(
@@ -139,6 +150,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path_regex(r"^/v1beta/models/.*:streamGenerateContent"))
             .and(body_string_contains("\"role\":\"model\""))
+            .and(body_string_contains("\"maxOutputTokens\":100"))
             .respond_with(
                 ResponseTemplate::new(200)
                     .set_body_string(sse)

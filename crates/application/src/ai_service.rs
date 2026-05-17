@@ -204,6 +204,7 @@ mod tests {
 
     struct MockAi {
         reply: String,
+        last_request: std::sync::Arc<std::sync::Mutex<Option<AiRequest>>>,
     }
 
     #[async_trait::async_trait]
@@ -213,8 +214,9 @@ mod tests {
         }
         async fn stream(
             &self,
-            _request: AiRequest,
+            request: AiRequest,
         ) -> Result<BoxStream<'static, Result<AiChunk, AiError>>, AiError> {
+            *self.last_request.lock().unwrap() = Some(request.clone());
             let reply = self.reply.clone();
             Ok(futures::stream::iter(vec![
                 Ok(AiChunk::Text(reply)),
@@ -224,7 +226,7 @@ mod tests {
         }
     }
 
-    fn build_service(reply: &str) -> AiService {
+    fn build_service(reply: &str) -> (AiService, std::sync::Arc<std::sync::Mutex<Option<AiRequest>>>) {
         let mut secrets = MockSecretStore::new();
         secrets
             .expect_get()
@@ -234,10 +236,17 @@ mod tests {
             vec![],
         ));
         let reply = reply.to_string();
+        let last_request: std::sync::Arc<std::sync::Mutex<Option<AiRequest>>> =
+            std::sync::Arc::new(std::sync::Mutex::new(None));
+        let captured = last_request.clone();
         let factory: ProviderFactory = Arc::new(move |_kind: &str, _key: &str| {
-            Some(Arc::new(MockAi { reply: reply.clone() }) as Arc<dyn AiProvider>)
+            Some(Arc::new(MockAi {
+                reply: reply.clone(),
+                last_request: captured.clone(),
+            }) as Arc<dyn AiProvider>)
         });
-        AiService::new(Arc::new(secrets), market, vec![], factory)
+        let service = AiService::new(Arc::new(secrets), market, vec![], factory);
+        (service, last_request)
     }
 
     async fn drain(mut stream: BoxStream<'static, Result<AiChunk, AiError>>) -> String {
@@ -253,7 +262,7 @@ mod tests {
 
     #[tokio::test]
     async fn send_message_records_user_and_assistant_turns() {
-        let svc = build_service("first reply");
+        let (svc, _) = build_service("first reply");
         let sym = Symbol::new(AssetKind::Crypto, "BTC", Some("USD")).unwrap();
 
         let stream = svc.send_message("openai", &sym, "hello").await.unwrap();
@@ -270,7 +279,7 @@ mod tests {
 
     #[tokio::test]
     async fn second_turn_appends_to_existing_conversation() {
-        let svc = build_service("reply");
+        let (svc, _) = build_service("reply");
         let sym = Symbol::new(AssetKind::Crypto, "BTC", Some("USD")).unwrap();
 
         let r1 = drain(svc.send_message("openai", &sym, "q1").await.unwrap()).await;
@@ -285,7 +294,7 @@ mod tests {
 
     #[tokio::test]
     async fn commit_assistant_keeps_partial_text_after_cancel() {
-        let svc = build_service("ignored");
+        let (svc, _) = build_service("ignored");
         let sym = Symbol::new(AssetKind::Crypto, "BTC", Some("USD")).unwrap();
 
         let _ = svc.send_message("openai", &sym, "q").await.unwrap();
@@ -299,7 +308,7 @@ mod tests {
 
     #[tokio::test]
     async fn start_turn_records_a_preset_user_message() {
-        let svc = build_service("analysis");
+        let (svc, _) = build_service("analysis");
         let sym = Symbol::new(AssetKind::UsEquity, "AAPL", None).unwrap();
 
         let stream = svc
@@ -314,5 +323,25 @@ mod tests {
         assert_eq!(h[0].role, Role::User);
         assert!(h[0].content.contains("AAPL"));
         assert_eq!(h[1].content, "analysis");
+    }
+
+    #[tokio::test]
+    async fn context_sent_to_provider_is_capped() {
+        let (svc, last_request) = build_service("ok");
+        let sym = Symbol::new(AssetKind::Crypto, "BTC", Some("USD")).unwrap();
+
+        // Build a conversation longer than the cap: each cycle adds a user
+        // turn plus an assistant turn (2 messages).
+        for i in 0..(MAX_CONTEXT_MESSAGES) {
+            let stream = svc
+                .send_message("openai", &sym, &format!("q{i}"))
+                .await
+                .unwrap();
+            let reply = drain(stream).await;
+            svc.commit_assistant(&sym, reply).await;
+        }
+
+        let sent = last_request.lock().unwrap().clone().unwrap();
+        assert_eq!(sent.messages.len(), MAX_CONTEXT_MESSAGES);
     }
 }
