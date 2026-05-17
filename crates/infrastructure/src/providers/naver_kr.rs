@@ -308,4 +308,34 @@ mod tests {
         assert!(timeframe_for(CandleInterval::OneDay).is_some());
         assert!(timeframe_for(CandleInterval::OneMin).is_some());
     }
+
+    /// Contract test: hits the real finance.naver.com to detect when Naver
+    /// changes its HTML and the quote scraper's selectors silently break.
+    /// `#[ignore]`d — it needs network access and is inherently fragile, so it
+    /// must not run in the default `cargo test`. Run it on demand:
+    ///   cargo test -p infrastructure -- --ignored contract_real_naver_quote
+    #[tokio::test]
+    #[ignore = "network contract test — run manually with --ignored"]
+    async fn contract_real_naver_quote() {
+        let provider = NaverKrProvider::new(Arc::new(ReqwestHttpClient::new()));
+        // Samsung Electronics (KOSPI) — a stable, long-lived ticker.
+        let s = Symbol::new(AssetKind::KrEquity, "005930", None).unwrap();
+        let quotes = provider
+            .fetch_quotes(&[s])
+            .await
+            .expect("Naver quote fetch failed — the scrape selectors may have broken");
+        assert_eq!(quotes.len(), 1, "expected exactly one quote for 005930");
+        let q = &quotes[0];
+        assert!(
+            q.price.money().amount() > Decimal::ZERO,
+            "scraped price should be positive, got {}",
+            q.price.money().amount()
+        );
+        assert_eq!(q.price.money().currency().as_str(), "KRW");
+        assert!(
+            q.display_name.as_deref().map(|n| !n.is_empty()).unwrap_or(false),
+            "expected a non-empty display_name, got {:?}",
+            q.display_name
+        );
+    }
 }
