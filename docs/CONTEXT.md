@@ -1,6 +1,6 @@
 # ai-stock — Context & Ubiquitous Language
 
-> Last updated: 2026-05-17 (post-M3 polish)
+> Last updated: 2026-05-17 (M4 complete)
 
 ## Bounded Contexts
 
@@ -22,12 +22,18 @@
 | Money | Decimal amount + Currency (3-5 uppercase ASCII letters, e.g. USD, KRW, USDT). |
 | Quantity | Non-negative decimal count of units. |
 | FxRates | Pure value object — a table of directional currency conversion rates. |
+| Conversation | An ordered, per-symbol list of user/assistant Messages — a multi-turn AI chat. |
+| Message | One turn in a Conversation: a Role (User/Assistant) plus text content. |
+| PromptKind | Which preset analysis a turn is: Commentary, ChartAnalysis, or NewsSummary. |
 | Provider | External source for quotes (Binance, Yahoo, KIS, Naver, etc.) hidden behind a trait. |
 
 ## Current State
 
-- **M1 + M2 + M3 complete**, followed by a post-M3 polish pass (see `docs/progress.md`,
-  entry "2026-05-13 / 2026-05-14 — Post-M3 polish"). 92 backend test functions.
+- **M1 + M2 + M3 + M4 complete.** See `docs/progress.md`. 100+ backend test functions.
+- **AI assistant (M4).** The AI panel is a per-symbol multi-turn chat: free-form
+  follow-up messages with three preset quick-start buttons (commentary,
+  chart-analysis, news-summary). History is session memory; streaming turns can
+  be cancelled. See ADR 0007.
 - **Charts.** `ChartPanel` renders historical candles with SMA/RSI/MACD subpanes and
   volume bars inside the DetailPane; candle interval is user-configurable.
 - **Indicator alerts.** `AlertCondition` covers RSI thresholds and MACD crosses in
@@ -54,3 +60,4 @@ See `docs/adr/`:
 - 0004 — BYOK AI with streaming over Tauri events.
 - 0005 — KIS Open API provider for KR stocks (BYOK brokerage credentials).
 - 0006 — FxRates value object + cross-currency portfolio aggregation.
+- 0007 — Multi-turn AI conversation.

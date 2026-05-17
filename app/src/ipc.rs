@@ -406,29 +406,96 @@ pub async fn chart_data(
     })
 }
 
+/// Pump a provider stream to `ai-chunk` / `ai-done` / `ai-error` events while
+/// watching for cancellation. On completion (done, error, or cancel) the
+/// accumulated text — full or partial — is committed to the conversation.
+async fn pump_stream(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    symbol: &Symbol,
+    mut stream: futures::stream::BoxStream<
+        'static,
+        Result<application::ports::ai_provider::AiChunk, application::ports::ai_provider::AiError>,
+    >,
+) {
+    use application::ports::ai_provider::AiChunk;
+
+    // Install a fresh cancel channel for this turn.
+    let mut cancel_rx = {
+        let (tx, rx) = tokio::sync::watch::channel(false);
+        *state.ai_cancel.lock().unwrap() = tx;
+        rx
+    };
+
+    let mut acc = String::new();
+    loop {
+        tokio::select! {
+            _ = cancel_rx.changed() => {
+                let _ = app.emit("ai-done", ());
+                break;
+            }
+            chunk = stream.next() => {
+                match chunk {
+                    Some(Ok(AiChunk::Text(t))) => {
+                        acc.push_str(&t);
+                        let _ = app.emit("ai-chunk", t);
+                    }
+                    Some(Ok(AiChunk::Done)) | None => {
+                        let _ = app.emit("ai-done", ());
+                        break;
+                    }
+                    Some(Err(e)) => {
+                        let _ = app.emit("ai-error", e.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    state.ai.commit_assistant(symbol, acc).await;
+}
+
 #[tauri::command]
-pub async fn ai_commentary(
+pub async fn ai_start_turn(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     provider: String,
     symbol: SymbolDto,
+    kind: String,
 ) -> Result<(), String> {
     let s = dto_to_symbol(&symbol)?;
-    let mut stream = state.ai.commentary(&provider, &s).await.map_err(|e| e.to_string())?;
-    while let Some(chunk) = stream.next().await {
-        match chunk {
-            Ok(application::ports::ai_provider::AiChunk::Text(t)) => {
-                let _ = app.emit("ai-chunk", t);
-            }
-            Ok(application::ports::ai_provider::AiChunk::Done) => {
-                let _ = app.emit("ai-done", ());
-                break;
-            }
-            Err(e) => {
-                let _ = app.emit("ai-error", e.to_string());
-                break;
-            }
-        }
-    }
+    let prompt_kind = domain::prompt::PromptKind::parse(&kind)
+        .ok_or_else(|| format!("bad prompt kind: {kind}"))?;
+    let stream = state
+        .ai
+        .start_turn(&provider, &s, prompt_kind)
+        .await
+        .map_err(|e| e.to_string())?;
+    pump_stream(&app, state.inner(), &s, stream).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn ai_send_message(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    provider: String,
+    symbol: SymbolDto,
+    text: String,
+) -> Result<(), String> {
+    let s = dto_to_symbol(&symbol)?;
+    let stream = state
+        .ai
+        .send_message(&provider, &s, &text)
+        .await
+        .map_err(|e| e.to_string())?;
+    pump_stream(&app, state.inner(), &s, stream).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn ai_cancel(state: State<'_, AppState>) -> Result<(), String> {
+    // `send` fails only when no turn is in flight (receiver dropped) — ignore.
+    let _ = state.ai_cancel.lock().unwrap().send(true);
     Ok(())
 }

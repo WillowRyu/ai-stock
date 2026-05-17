@@ -87,13 +87,18 @@ export const alertsIpc = {
 };
 
 export type AiProviderKind = "openai" | "anthropic" | "gemini";
+export type AiPromptKind = "commentary" | "chart_analysis" | "news_summary";
 
 export const aiIpc = {
-  setKey: (provider: AiProviderKind, key: string) => invoke<void>("ai_set_key", { provider, key }),
+  setKey: (provider: AiProviderKind, key: string) =>
+    invoke<void>("ai_set_key", { provider, key }),
   clearKey: (provider: AiProviderKind) => invoke<void>("ai_clear_key", { provider }),
   hasKey: (provider: AiProviderKind) => invoke<boolean>("ai_has_key", { provider }),
-  commentary: (provider: AiProviderKind, symbol: SymbolDto) =>
-    invoke<void>("ai_commentary", { provider, symbol }),
+  startTurn: (provider: AiProviderKind, symbol: SymbolDto, kind: AiPromptKind) =>
+    invoke<void>("ai_start_turn", { provider, symbol, kind }),
+  sendMessage: (provider: AiProviderKind, symbol: SymbolDto, text: string) =>
+    invoke<void>("ai_send_message", { provider, symbol, text }),
+  cancel: () => invoke<void>("ai_cancel"),
 };
 
 export const kisIpc = {

@@ -218,3 +218,25 @@ First full-suite run recorded since the post-M3 polish pass.
   E2E on Linux were removed in `1a456a0`. Restoring an E2E path is 1.0-release work
   (reinstate CI on Linux, or document E2E as Linux/Windows-only).
 - Verdict: backend + frontend + typecheck green. Safe to proceed to M4.
+
+## 2026-05-17 (M4) — Multi-turn AI assistant
+
+Spec: `docs/superpowers/specs/2026-05-17-m4-ai-assistant-design.md`.
+Plan: `docs/superpowers/plans/2026-05-17-m4-ai-assistant.md`.
+
+- [x] Task 1: `Conversation` aggregate + `Message`/`Role` (domain).
+- [x] Task 2: `PromptKind` + chart-analysis/news-summary prompt builders.
+- [x] Task 3: `AiProvider` trait migrated to multi-turn `AiRequest`.
+- [x] Task 4: `AiService` multi-turn — start_turn/send_message/commit_assistant.
+- [x] Task 5: `ai_start_turn`/`ai_send_message`/`ai_cancel` IPC + cancellation.
+- [x] Task 6: frontend `aiStore`.
+- [x] Task 7: frontend IPC bindings.
+- [x] Task 8: `AiPanel` multi-turn chat UI.
+- [x] Task 9: ADR 0007 + CONTEXT/progress updates.
+
+### M4 complete
+
+- Per-symbol multi-turn AI chat with preset quick-start buttons and stream
+  cancellation. Session-memory history (no persistence).
+- Next: M5 — 1.0 release prep (packaging, code signing, CI restoration, Naver
+  contract test) + persistent chat history.

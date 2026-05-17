@@ -2,6 +2,7 @@
 pub mod alert;
 pub mod asset;
 pub mod candle;
+pub mod conversation;
 pub mod fx;
 pub mod holding;
 pub mod indicators;
