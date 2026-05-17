@@ -203,3 +203,18 @@ on 2026-05-17 — these commits were made but not recorded at the time.
 - ADR 0006 written — FxRates value object + cross-currency portfolio aggregation.
 - `docs/CONTEXT.md` updated to post-M3-polish state + ADR index added.
 - Post-M3 polish work (above) logged retroactively from git history.
+
+## 2026-05-17 — Test suite verification (post-polish green check)
+
+First full-suite run recorded since the post-M3 polish pass.
+
+- **Backend** (`cargo test --workspace`): 93 passed, 0 failed, 0 ignored
+  (domain 62, application 10, infrastructure 21, app crate 0).
+- **Frontend** (`vitest run`): 2 passed, 0 failed.
+- **Typecheck** (`tsc -b --noEmit`): clean.
+- **Lint** (`eslint`): 0 errors, 4 warnings (all pre-existing in `e2e/` files).
+- **E2E**: NOT run — no execution path currently. `tauri-driver` is unsupported on
+  macOS (WebDriver has no macOS WKWebView backend), and the CI workflows that ran
+  E2E on Linux were removed in `1a456a0`. Restoring an E2E path is 1.0-release work
+  (reinstate CI on Linux, or document E2E as Linux/Windows-only).
+- Verdict: backend + frontend + typecheck green. Safe to proceed to M4.
