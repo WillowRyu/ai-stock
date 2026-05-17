@@ -1,6 +1,6 @@
 # ai-stock — Context & Ubiquitous Language
 
-> Last updated: 2026-05-17 (M4 complete)
+> Last updated: 2026-05-17 (M5 complete)
 
 ## Bounded Contexts
 
@@ -29,7 +29,7 @@
 
 ## Current State
 
-- **M1 + M2 + M3 + M4 complete.** See `docs/progress.md`. 100+ backend test functions.
+- **M1 + M2 + M3 + M4 + M5 complete.** See `docs/progress.md`. 100+ backend test functions. The app builds into a runnable unsigned macOS app via `npm run tauri build` (see `docs/RELEASE.md`).
 - **AI assistant (M4).** The AI panel is a per-symbol multi-turn chat: free-form
   follow-up messages with three preset quick-start buttons (commentary,
   chart-analysis, news-summary). History is session memory; streaming turns can
