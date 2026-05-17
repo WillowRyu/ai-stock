@@ -27,10 +27,11 @@ export function AiPanel({ symbol, onClose }: { symbol: SymbolDto | null; onClose
   const [hasKey, setHasKey] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const unsubs = useRef<Array<() => void>>([]);
 
-  const { bySymbol, streaming, pushUser, startAssistant, appendChunk, finishStreaming } =
-    useAiStore();
+  const {
+    bySymbol, streaming, pushUser, startAssistant, appendChunk,
+    finishStreaming, failStreaming,
+  } = useAiStore();
 
   const symKey = symbol ? quoteKey(symbol) : null;
   const messages = symKey ? bySymbol[symKey] ?? [] : [];
@@ -46,15 +47,24 @@ export function AiPanel({ symbol, onClose }: { symbol: SymbolDto | null; onClose
 
   useEffect(() => {
     let mounted = true;
+    let localUnsubs: Array<() => void> = [];
     Promise.all([
       onAiChunk((t) => {
         if (mounted && symKeyRef.current) appendChunk(symKeyRef.current, t);
       }),
       onAiDone(() => { if (mounted) finishStreaming(); }),
-      onAiError((e) => { if (mounted) { finishStreaming(); setError(e); } }),
-    ]).then((arr) => { unsubs.current = arr; });
-    return () => { mounted = false; unsubs.current.forEach((u) => u()); };
-  }, [appendChunk, finishStreaming]);
+      onAiError((e) => {
+        if (!mounted) return;
+        if (symKeyRef.current) failStreaming(symKeyRef.current);
+        else finishStreaming();
+        setError(e);
+      }),
+    ]).then((arr) => {
+      if (mounted) localUnsubs = arr;
+      else arr.forEach((u) => u());
+    });
+    return () => { mounted = false; localUnsubs.forEach((u) => u()); };
+  }, [appendChunk, finishStreaming, failStreaming]);
 
   // Auto-cancel an in-flight stream when the user switches symbols.
   useEffect(() => {
@@ -69,13 +79,13 @@ export function AiPanel({ symbol, onClose }: { symbol: SymbolDto | null; onClose
     pushUser(symKey, presetUserLabel(kind));
     startAssistant(symKey);
     aiIpc.startTurn(provider, symbol, kind).catch((e) => {
-      finishStreaming();
+      failStreaming(symKey);
       setError(String(e));
     });
   }
 
   function send() {
-    if (!symbol || !symKey || streaming) return;
+    if (!symbol || !symKey || streaming || !hasKey) return;
     const text = input.trim();
     if (!text) return;
     setError(null);
@@ -83,7 +93,7 @@ export function AiPanel({ symbol, onClose }: { symbol: SymbolDto | null; onClose
     startAssistant(symKey);
     setInput("");
     aiIpc.sendMessage(provider, symbol, text).catch((e) => {
-      finishStreaming();
+      failStreaming(symKey);
       setError(String(e));
     });
   }

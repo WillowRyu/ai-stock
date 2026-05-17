@@ -17,6 +17,8 @@ interface AiState {
   /** Append a streamed chunk to the trailing assistant message. */
   appendChunk(symKey: string, text: string): void;
   finishStreaming(): void;
+  /** End streaming and drop a trailing empty assistant message (error path). */
+  failStreaming(symKey: string): void;
 }
 
 export const useAiStore = create<AiState>((set) => ({
@@ -57,5 +59,19 @@ export const useAiStore = create<AiState>((set) => ({
 
   finishStreaming() {
     set({ streaming: false });
+  },
+
+  failStreaming(symKey) {
+    set((prev) => {
+      const msgs = prev.bySymbol[symKey] ?? [];
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === "assistant" && last.content === "") {
+        return {
+          streaming: false,
+          bySymbol: { ...prev.bySymbol, [symKey]: msgs.slice(0, -1) },
+        };
+      }
+      return { streaming: false };
+    });
   },
 }));
