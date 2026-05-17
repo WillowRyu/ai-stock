@@ -141,3 +141,65 @@
 - ~71 backend unit tests (including 3 AI streaming wiremock tests and 2 RSS parsing tests), 1 frontend test.
 - Tauri app: M1 (core) + M2 (indicators/alerts/KR) + M3 (AI) all working together.
 - Next: post-M3 polish.
+
+## 2026-05-13 / 2026-05-14 — Post-M3 polish
+
+Work done after the M3 close-out (`e34c90c`), grouped by theme. Logged retroactively
+on 2026-05-17 — these commits were made but not recorded at the time.
+
+### Charts
+
+- `compute_series` (application) + `chart_data` IPC for chart overlays (`e9f0360`).
+- ChartPanel: candlestick + SMA/RSI/MACD subpanes (`ec4ab1d`), embedded in DetailPane (`5de0c0b`).
+- Volume bars, indicator visibility toggles, axis formatting (`33e16af`).
+- Configurable candle interval — 1m / 5m / 30m / 1h / 1d / 1w (`8cbb186`).
+
+### Indicator alerts
+
+- Domain: `AlertCondition` extended with RSI/MACD conditions + `EvalContext` (`f41353a`).
+- Wired RSI/MACD-cross alerts end-to-end (`20b3ddf`) with frontend UI (`ed44bc7`).
+
+### Multi-currency portfolio
+
+- Domain: `FxRates` value object + cross-currency portfolio aggregation (`84cf2dd`).
+- `FxRateBook` wired into PortfolioService with periodic Yahoo refresh (`79cb2b9`).
+
+### KR data sources
+
+- `KisProvider` — 한국투자증권 OAuth tokenP + inquire-price endpoint (`f068dab`).
+- KIS BYOK credential IPC commands (`1687bf3`) + Settings UI (`e961f11`).
+- Naver candle endpoint + KR `display_name` scraping (`9c30aa2`); EUC-KR decoding fix (`c5a82e0`).
+
+### Provider robustness
+
+- Per-symbol `provider-error` events (`72e4aaa`); stale indicator + error toasts in UI (`5d581f3`).
+- Yahoo quotes routed through v8/chart meta instead of 401-gated v7/quote (`e1e6f65`).
+- Capabilities + provider fallback + candle provider fallback fixes (`0bc82b5`, `1760023`).
+- Live poll-interval setting re-read each tick (`f601231`).
+
+### UI polish + theming
+
+- Cross-platform window vibrancy + transparent main window (`3422ad4`, `47f3dc6`).
+- Theme store: light/dark/system with flash-free apply (`9cce420`); widget respects theme (`a1c5cdb`).
+- Glass surfaces / dialogs / tinted toasts / chart chrome (`04a57c6`, `7912f8b`, `d300e47`).
+- Custom Select component (`6f36fe8`); Settings dialog redesigned with sectioned layout (`6c6979a`, `18c2009`).
+- Empty-state guides (`cb34719`), localized timestamps + timezone picker (`e04809a`),
+  `toLocaleString` price/money formatting (`b123565`), notification-permission flow (`6ac5162`).
+
+### Housekeeping
+
+- App icon (candlestick design) + proper README (`6b26134`).
+- `.eslintrc.cjs` so `npm run lint` runs (`c3864e0`); `.gitignore` expanded (`55756b0`).
+- Removed GitHub Actions workflows (`1a456a0`).
+
+### State after polish
+
+- 92 backend test functions (`#[test]` / `#[tokio::test]`), 2 frontend test/spec files.
+- Working tree clean; HEAD at `55756b0`.
+
+## 2026-05-17 — Documentation backfill
+
+- ADR 0005 written — KIS Open API provider for KR stocks (BYOK brokerage credentials).
+- ADR 0006 written — FxRates value object + cross-currency portfolio aggregation.
+- `docs/CONTEXT.md` updated to post-M3-polish state + ADR index added.
+- Post-M3 polish work (above) logged retroactively from git history.

@@ -1,11 +1,11 @@
 # ai-stock — Context & Ubiquitous Language
 
-> Last updated: 2026-05-13 (M3 complete)
+> Last updated: 2026-05-17 (post-M3 polish)
 
 ## Bounded Contexts
 
 - **Market Data** — fetching, caching, and computing on quotes.
-- **Portfolio** — holdings, valuation, P&L.
+- **Portfolio** — holdings, valuation, P&L, cross-currency aggregation.
 - **Alerts** — rule evaluation and notification (M2).
 - **AI Assistance** — commentary/analysis (M3).
 
@@ -15,16 +15,42 @@
 |---|---|
 | Symbol | Canonical identity of a tradable asset (kind + ticker + optional quote currency). |
 | Quote | A point-in-time price observation for a Symbol. |
-| Candle | OHLCV bar over a time interval. |
+| Candle | OHLCV bar over a CandleInterval (1m / 5m / 30m / 1h / 1d / 1w). |
 | Holding | A position the user owns: Symbol + Quantity + cost basis. |
 | Watchlist | Aggregate of Symbols the user wants to track. |
-| Portfolio | Aggregate of Holdings; can be evaluated against current Quotes. |
+| Portfolio | Aggregate of Holdings; evaluated against current Quotes in a base currency. |
 | Money | Decimal amount + Currency (3-5 uppercase ASCII letters, e.g. USD, KRW, USDT). |
 | Quantity | Non-negative decimal count of units. |
-| Provider | External source for quotes (Binance, Yahoo, etc.) hidden behind a trait. |
+| FxRates | Pure value object — a table of directional currency conversion rates. |
+| Provider | External source for quotes (Binance, Yahoo, KIS, Naver, etc.) hidden behind a trait. |
 
 ## Current State
 
-- **M3 complete.** BYOK AI with OpenAI / Anthropic / Gemini streaming, news context from Yahoo + CoinDesk, prompt template in domain. AI is toggleable; without a key set, the app works exactly as M2.
-- **Known M3 limitations:** Only commentary prompt type — chart-analysis and news-summary variants are stubs. No chat history (each request is independent). RSS news is best-effort and unsymmetric (Yahoo per-symbol, CoinDesk filtered). Stream cancellation isn't wired — closing the AI panel during generation lets it finish to completion.
-- **Next:** post-M3 polish (chart panel rendering historical candles with overlays, chat history, news summary prompts), then a 1.0 release.
+- **M1 + M2 + M3 complete**, followed by a post-M3 polish pass (see `docs/progress.md`,
+  entry "2026-05-13 / 2026-05-14 — Post-M3 polish"). 92 backend test functions.
+- **Charts.** `ChartPanel` renders historical candles with SMA/RSI/MACD subpanes and
+  volume bars inside the DetailPane; candle interval is user-configurable.
+- **Indicator alerts.** `AlertCondition` covers RSI thresholds and MACD crosses in
+  addition to price thresholds, evaluated via an `EvalContext`.
+- **Cross-currency portfolio.** Holdings in different currencies are converted into a
+  base currency via `FxRates` (domain) / `FxRateBook` (application, Yahoo-refreshed).
+  See ADR 0006.
+- **KR stocks.** Two sources: Naver Finance scraping (no account needed, fragile —
+  ADR 0003) and `KisProvider` (한국투자증권 BYOK brokerage credentials — ADR 0005).
+- **Theming + UI.** Light/dark/system theme store, cross-platform window vibrancy,
+  glass surfaces, custom Select, sectioned Settings dialog.
+- **Known limitations:** AI still has only the commentary prompt type (chart-analysis
+  and news-summary are stubs); no chat history; AI stream cancellation not wired.
+  FX cross rates are not auto-derived — the refresher must populate each pair used.
+- **Next:** chart-analysis / news-summary prompts, chat history, then a 1.0 release.
+
+## Architecture Decisions
+
+See `docs/adr/`:
+
+- 0001 — Canonical Symbol with per-provider translation.
+- 0002 — Polling-only for M1.
+- 0003 — Grep-based layer check, Naver scraping for KR stocks.
+- 0004 — BYOK AI with streaming over Tauri events.
+- 0005 — KIS Open API provider for KR stocks (BYOK brokerage credentials).
+- 0006 — FxRates value object + cross-currency portfolio aggregation.
