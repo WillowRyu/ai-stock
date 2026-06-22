@@ -1,10 +1,12 @@
 use crate::wiring::AppState;
+use application::breakeven;
 use application::indicator_service::{compute_series, compute_snapshot, IndicatorSeries};
 use application::ports::repos::AppSettings;
 use application::ports::secret_store::{SecretError, SecretStore};
 use domain::{
     alert::{AlertCondition, AlertRule},
-    asset::AssetKind, holding::Holding, money::{Currency, Money}, quantity::Quantity, symbol::Symbol,
+    asset::AssetKind, averaging_down::BreakevenPlan, holding::Holding,
+    money::{Currency, Money}, quantity::Quantity, symbol::Symbol,
 };
 use futures::StreamExt;
 use rust_decimal::Decimal;
@@ -117,6 +119,97 @@ pub struct HoldingValuationDto {
     pub market_value: Option<String>,
     pub cost_basis: String,
     pub pnl: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct BreakevenPlanArgs {
+    pub avg_cost_amount: String,
+    pub quantity: String,
+    pub current_price_amount: String,
+    pub native_currency: String,
+    pub targets_pct: Vec<String>,
+    pub display_currency: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct AveragingDownRowDto {
+    pub target_pct: String,
+    pub target_avg: String,
+    pub add_quantity: String,
+    pub add_invest_native: String,
+    pub add_invest_native_currency: String,
+    pub add_invest_display: Option<String>,
+    pub display_currency: String,
+    pub new_breakeven_gap_pct: String,
+    pub feasible: bool,
+}
+
+#[derive(Serialize, Clone)]
+pub struct BreakevenPlanDto {
+    pub is_underwater: bool,
+    pub breakeven_gap_pct: Option<String>,
+    pub current_return_pct: Option<String>,
+    pub max_reduction_pct: String,
+    pub rows: Vec<AveragingDownRowDto>,
+}
+
+fn breakeven_plan_to_dto(plan: BreakevenPlan, display: Currency) -> BreakevenPlanDto {
+    BreakevenPlanDto {
+        is_underwater: plan.is_underwater,
+        breakeven_gap_pct: plan.breakeven_gap_pct.map(|d| d.to_string()),
+        current_return_pct: plan.current_return_pct.map(|d| d.to_string()),
+        max_reduction_pct: plan.max_reduction_pct.to_string(),
+        rows: plan
+            .rows
+            .iter()
+            .map(|r| AveragingDownRowDto {
+                target_pct: r.target_pct.to_string(),
+                target_avg: r.target_avg.amount().to_string(),
+                add_quantity: r.add_quantity.value().to_string(),
+                add_invest_native: r.add_invest_native.amount().to_string(),
+                add_invest_native_currency: r.add_invest_native.currency().as_str().to_string(),
+                add_invest_display: r.add_invest_display.map(|m| m.amount().to_string()),
+                display_currency: display.as_str().to_string(),
+                new_breakeven_gap_pct: r.new_breakeven_gap_pct.to_string(),
+                feasible: r.feasible,
+            })
+            .collect(),
+    }
+}
+
+#[tauri::command]
+pub async fn breakeven_plan(
+    state: State<'_, AppState>,
+    args: BreakevenPlanArgs,
+) -> Result<BreakevenPlanDto, String> {
+    let native = Currency::new(&args.native_currency).map_err(|e| format!("{e:?}"))?;
+    let display = Currency::new(&args.display_currency).map_err(|e| format!("{e:?}"))?;
+    let a = Decimal::from_str(&args.avg_cost_amount).map_err(|e| e.to_string())?;
+    let p = Decimal::from_str(&args.current_price_amount).map_err(|e| e.to_string())?;
+    let q = Decimal::from_str(&args.quantity).map_err(|e| e.to_string())?;
+    if a <= Decimal::ZERO || p <= Decimal::ZERO || q <= Decimal::ZERO {
+        return Err("avg_cost, quantity, and current_price must all be greater than 0".into());
+    }
+
+    let mut targets = Vec::with_capacity(args.targets_pct.len());
+    for t in &args.targets_pct {
+        targets.push(Decimal::from_str(t).map_err(|e| e.to_string())?);
+    }
+
+    let avg_cost = Money::new(a, native);
+    let current_price = Money::new(p, native);
+    let quantity = Quantity::new(q).map_err(|e| format!("{e:?}"))?;
+
+    let plan = breakeven::plan(
+        &state.fx,
+        avg_cost,
+        quantity,
+        current_price,
+        &targets,
+        display,
+    )
+    .await;
+    Ok(breakeven_plan_to_dto(plan, display))
 }
 
 #[tauri::command]

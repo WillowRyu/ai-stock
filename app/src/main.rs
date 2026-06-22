@@ -42,6 +42,7 @@ async fn main() {
             ipc::watchlist_get, ipc::watchlist_add, ipc::watchlist_remove,
             ipc::quotes_snapshot,
             ipc::portfolio_upsert, ipc::portfolio_delete, ipc::portfolio_valuation,
+            ipc::breakeven_plan,
             ipc::settings_get, ipc::settings_save,
             ipc::widget_toggle,
             ipc::indicators_for,
