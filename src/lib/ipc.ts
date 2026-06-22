@@ -39,6 +39,35 @@ export interface PortfolioValuationDto {
   holdings: HoldingValuationDto[];
 }
 
+export interface BreakevenPlanArgs {
+  avg_cost_amount: string;
+  quantity: string;
+  current_price_amount: string;
+  native_currency: string;
+  targets_pct: string[];
+  display_currency: string;
+}
+
+export interface AveragingDownRowDto {
+  target_pct: string;
+  target_avg: string;
+  add_quantity: string;
+  add_invest_native: string;
+  add_invest_native_currency: string;
+  add_invest_display: string | null;
+  display_currency: string;
+  new_breakeven_gap_pct: string;
+  feasible: boolean;
+}
+
+export interface BreakevenPlanDto {
+  is_underwater: boolean;
+  breakeven_gap_pct: string | null;
+  current_return_pct: string | null;
+  max_reduction_pct: string;
+  rows: AveragingDownRowDto[];
+}
+
 export interface AppSettingsDto {
   poll_interval_secs: number;
   display_currency: string;
@@ -57,6 +86,7 @@ export const ipc = {
   portfolioUpsert: (holding: HoldingDto) => invoke<void>("portfolio_upsert", { holding }),
   portfolioDelete: (symbol: SymbolDto) => invoke<void>("portfolio_delete", { symbol }),
   portfolioValuation: () => invoke<PortfolioValuationDto>("portfolio_valuation"),
+  breakevenPlan: (args: BreakevenPlanArgs) => invoke<BreakevenPlanDto>("breakeven_plan", { args }),
 
   settingsGet: () => invoke<AppSettingsDto>("settings_get"),
   settingsSave: (settings: AppSettingsDto) => invoke<void>("settings_save", { settings }),
