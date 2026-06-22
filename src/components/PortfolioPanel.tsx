@@ -3,6 +3,7 @@ import { usePortfolioStore } from "../lib/state/portfolioStore";
 import { useWatchlistStore } from "../lib/state/watchlistStore";
 import { formatMoney } from "../lib/format";
 import { Select } from "./Select";
+import { BreakevenCalc } from "./BreakevenCalc";
 import type { HoldingDto, SymbolDto } from "../lib/ipc";
 
 function defaultCostCurrency(s: SymbolDto): string {
@@ -29,6 +30,7 @@ function symbolKey(s: SymbolDto): string {
 export function PortfolioPanel() {
   const { valuation, refresh, upsert, remove } = usePortfolioStore();
   const [open, setOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -36,7 +38,10 @@ export function PortfolioPanel() {
     <aside className="w-80 border-l border-slate-300/40 dark:border-white/10 flex flex-col">
       <div className="p-3 border-b border-slate-300/40 dark:border-white/10 flex justify-between items-center">
         <span className="text-xs uppercase text-slate-500 dark:text-slate-400">Portfolio</span>
-        <button onClick={() => setOpen(true)} className="btn-secondary text-xs px-2 py-1">+ Add</button>
+        <div className="flex gap-1">
+          <button onClick={() => setCalcOpen(true)} className="btn-secondary text-xs px-2 py-1">🧮 본전 계산</button>
+          <button onClick={() => setOpen(true)} className="btn-secondary text-xs px-2 py-1">+ Add</button>
+        </div>
       </div>
 
       <div className="p-3 border-b border-slate-300/40 dark:border-white/10">
@@ -80,6 +85,7 @@ export function PortfolioPanel() {
       )}
 
       {open && <AddHoldingDialog onClose={() => setOpen(false)} onSubmit={upsert} />}
+      {calcOpen && <BreakevenCalc onClose={() => setCalcOpen(false)} />}
     </aside>
   );
 }
