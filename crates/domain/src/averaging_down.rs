@@ -66,7 +66,13 @@ pub fn plan(
         .map(|&n| {
             let t = a * (Decimal::ONE - n / hundred);
             let target_avg = Money::new(t, native);
-            let feasible = is_underwater && t > p;
+            // Feasible only when underwater and the target average `t` sits
+            // strictly between the current price and the current average
+            // (`p < t < a`). Requiring `t < a` routes non-positive targets
+            // (`n <= 0`, where `t >= a` and averaging down can't lower the
+            // average) to the infeasible branch instead of producing a
+            // negative add-quantity.
+            let feasible = is_underwater && t > p && t < a;
             if feasible {
                 let x = q * (a - t) / (t - p);
                 let add_quantity =
@@ -188,5 +194,18 @@ mod tests {
         let p = plan(usd(dec!(100)), qty(dec!(1)), usd(dec!(80)), &[dec!(10)], &FxRates::new(), ccy("USD"));
         assert!(p.rows[0].feasible);
         assert_eq!(p.rows[0].add_invest_display, None);
+    }
+
+    #[test]
+    fn non_positive_target_is_infeasible_not_panic() {
+        // Underwater. A non-positive target must NOT reach the `expect` panic and
+        // must be reported infeasible (n=0 => t==a; n<0 => t>a; neither lowers the avg).
+        let p = plan(
+            krw(dec!(100000)), qty(dec!(1)), krw(dec!(80000)),
+            &[dec!(0), dec!(-10)],
+            &FxRates::new(), ccy("KRW"),
+        );
+        assert!(!p.rows[0].feasible); // n = 0
+        assert!(!p.rows[1].feasible); // n = -10 (previously panicked)
     }
 }
