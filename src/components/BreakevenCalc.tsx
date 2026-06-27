@@ -35,6 +35,12 @@ function fmtQty(s: string): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
+function fmtRate(s: string): string {
+  const n = Number(s);
+  if (!Number.isFinite(n)) return s;
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
 const PRESET_TARGETS = ["5", "10", "15"];
 
 export function BreakevenCalc({ onClose }: { onClose(): void }) {
@@ -51,7 +57,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
   const [qtyInput, setQtyInput] = useState("");
   const [manualPrice, setManualPrice] = useState("");
   const [customPct, setCustomPct] = useState("");
-  const [displayMode, setDisplayMode] = useState<"native" | "USD" | "KRW">("native");
+  const [baseMode, setBaseMode] = useState<"native" | "KRW">("native");
   const [plan, setPlan] = useState<BreakevenPlanDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,9 +67,13 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
   );
   const liveQuote = selectedSymbol ? quotes[quoteKey(selectedSymbol)] : undefined;
   const nativeCcy = selectedSymbol ? defaultCostCurrency(selectedSymbol) : "USD";
-  // The live quote drives the price field when present; otherwise the user types it.
+  // When the asset is already KRW-denominated there is no base-currency choice.
+  const baseChoiceAvailable = nativeCcy !== "KRW";
+  const baseCcy = baseMode === "KRW" && baseChoiceAvailable ? "KRW" : nativeCcy;
+  // A live quote drives the price field (in native ccy); otherwise the user types
+  // it directly in the base currency.
   const effectivePrice = liveQuote?.price ?? manualPrice;
-  const displayCcy = displayMode === "native" ? nativeCcy : displayMode;
+  const priceCcy = liveQuote ? nativeCcy : baseCcy;
 
   const targets = useMemo(() => {
     const list = [...PRESET_TARGETS];
@@ -71,7 +81,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
     return list;
   }, [customPct]);
 
-  // Debounced recompute; also re-fires whenever the live price ticks (effectivePrice changes).
+  // Debounced recompute; also re-fires whenever the live price ticks.
   useEffect(() => {
     const a = avgInput.trim();
     const q = qtyInput.trim();
@@ -87,9 +97,9 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
           avg_cost_amount: a,
           quantity: q,
           current_price_amount: p,
-          native_currency: nativeCcy,
+          price_currency: priceCcy,
+          base_currency: baseCcy,
           targets_pct: targets,
-          display_currency: displayCcy,
         })
         .then((result) => {
           setPlan(result);
@@ -101,7 +111,15 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
         });
     }, 150);
     return () => clearTimeout(handle);
-  }, [avgInput, qtyInput, effectivePrice, nativeCcy, displayCcy, targets]);
+  }, [avgInput, qtyInput, effectivePrice, priceCcy, baseCcy, targets]);
+
+  const showKrwEcho =
+    baseCcy === "KRW" &&
+    !!liveQuote &&
+    !!plan &&
+    !plan.rate_missing &&
+    plan.current_price_base != null &&
+    plan.fx_rate_used != null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center" onClick={onClose}>
@@ -126,7 +144,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
 
         <div className="grid grid-cols-3 gap-3">
           <label className="block text-sm">
-            <span className="text-slate-700 dark:text-slate-300">평단 ({nativeCcy})</span>
+            <span className="text-slate-700 dark:text-slate-300">평단 ({baseCcy})</span>
             <input
               value={avgInput}
               onChange={(e) => setAvgInput(e.target.value)}
@@ -146,7 +164,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
             />
           </label>
           <label className="block text-sm">
-            <span className="text-slate-700 dark:text-slate-300">현재가 ({nativeCcy})</span>
+            <span className="text-slate-700 dark:text-slate-300">현재가 ({priceCcy})</span>
             <input
               value={effectivePrice}
               onChange={(e) => setManualPrice(e.target.value)}
@@ -163,24 +181,33 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
         {liveQuote && (
           <div className="text-xs text-emerald-600 dark:text-emerald-400">● 실시간 현재가 사용 중</div>
         )}
+        {showKrwEcho && plan && (
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            원화 환산 현재가 ≈ {formatMoney(plan.current_price_base ?? "")} KRW · 환율 1 {nativeCcy} = {fmtRate(plan.fx_rate_used ?? "")} KRW
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-700 dark:text-slate-300">표시 통화</span>
-          {(["native", "USD", "KRW"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setDisplayMode(m)}
-              className={
-                "px-2 py-1 rounded text-xs " +
-                (displayMode === m
-                  ? "bg-emerald-600/15 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                  : "btn-secondary")
-              }
-            >
-              {m === "native" ? `네이티브 (${nativeCcy})` : m}
-            </button>
-          ))}
+          {baseChoiceAvailable && (
+            <>
+              <span className="text-slate-700 dark:text-slate-300">기준 통화</span>
+              {(["native", "KRW"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setBaseMode(m)}
+                  className={
+                    "px-2 py-1 rounded text-xs " +
+                    (baseMode === m
+                      ? "bg-emerald-600/15 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                      : "btn-secondary")
+                  }
+                >
+                  {m === "native" ? `네이티브 (${nativeCcy})` : "원화 (KRW)"}
+                </button>
+              ))}
+            </>
+          )}
           <label className="ml-auto flex items-center gap-1">
             <span className="text-slate-500 dark:text-slate-400 text-xs">직접 %</span>
             <input
@@ -195,7 +222,11 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
 
         {error && <div className="text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
 
-        {!plan ? (
+        {plan?.rate_missing ? (
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            원화 환율을 아직 불러오지 못했습니다. 네이티브 통화로 보거나 잠시 후 다시 시도하세요.
+          </p>
+        ) : !plan ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">
             평단·보유수량·현재가를 입력하면 본전까지의 상승률과 물타기 시나리오가 계산됩니다.
           </p>
@@ -205,7 +236,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
               <div className="text-xs text-slate-500 dark:text-slate-400">본전까지</div>
               {plan.is_underwater && plan.breakeven_gap_pct ? (
                 <div className="text-base text-slate-900 dark:text-slate-100">
-                  현재가가{" "}
+                  {baseCcy === "KRW" ? "원화 기준 " : ""}현재가가{" "}
                   <span className="font-semibold text-rose-600 dark:text-rose-400">
                     +{fmtPct(plan.breakeven_gap_pct)}%
                   </span>{" "}
@@ -246,15 +277,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
                             <td className="tabular-nums">{formatMoney(r.target_avg)}</td>
                             <td className="tabular-nums">{fmtQty(r.add_quantity)}</td>
                             <td className="tabular-nums">
-                              {formatMoney(r.add_invest_native)} {r.add_invest_native_currency}
-                              {r.add_invest_display && (
-                                <span className="text-slate-500 dark:text-slate-400">
-                                  {" "}≈ {formatMoney(r.add_invest_display)} {r.display_currency}
-                                </span>
-                              )}
-                              {!r.add_invest_display && displayCcy !== r.add_invest_native_currency && (
-                                <span className="text-slate-400 dark:text-slate-500"> (환율 없음)</span>
-                              )}
+                              {formatMoney(r.add_invest)} {baseCcy}
                             </td>
                             <td className="tabular-nums text-rose-600 dark:text-rose-400">
                               +{fmtPct(r.new_breakeven_gap_pct)}%

@@ -257,3 +257,28 @@ Plan: `docs/superpowers/plans/2026-05-17-m5-local-release.md`.
 - A network contract test (`cargo test -p infrastructure -- --ignored`) guards the Naver scraper against silent selector breakage.
 - Deferred to a public release: CI, code signing / notarization, the `1.0.0` version bump, and Windows/Linux build verification.
 - Next: M6 — persistent chat history (SQLite), deferred from M4.
+
+## 2026-06-28 — Break-even calculator: 원화 기준(base-currency) input
+
+Spec: `docs/superpowers/specs/2026-06-28-breakeven-krw-input-design.md`.
+Plan: `docs/superpowers/plans/2026-06-28-breakeven-krw-input.md`.
+
+- The break-even / averaging-down calculator now runs in a chosen **base currency**
+  (네이티브 or 원화). A Korean holder of a USD asset enters 평단 in KRW; the live
+  USD price is converted to KRW via the existing FxRateBook, so the break-even gap
+  and every 물타기 figure are in won and move with the exchange rate.
+- `domain::averaging_down::plan` simplified to pure single-currency math (FX and
+  the output `display_currency` removed). The native→base price conversion moved to
+  `application::breakeven::plan`, which returns the converted price + applied rate
+  and surfaces `BreakevenError::RateMissing` when the cross rate is unknown.
+- IPC `breakeven_plan`: args take `price_currency` + `base_currency` (replacing
+  `native_currency` + `display_currency`); DTO gains `rate_missing`,
+  `base_currency`, `current_price_base`, `fx_rate_used` and drops the per-row
+  display fields (`add_invest_native` → `add_invest`).
+- Frontend: 기준 통화 selector (hidden for KRW-native assets) replaces the old
+  표시 통화 toggle; shows 원화 환산 현재가 + 환율, and a graceful "환율 없음" notice.
+- New tests: domain `breakeven_gap_when_underwater` / `worked_example_n10_feasible`
+  / `presets_feasible_until_n_max` / `not_underwater_reports_current_return` /
+  `non_positive_target_is_infeasible_not_panic` (single-currency); application
+  `converts_native_price_to_base_and_runs_in_base` /
+  `base_equals_price_currency_skips_conversion` / `missing_cross_rate_yields_rate_missing`.
