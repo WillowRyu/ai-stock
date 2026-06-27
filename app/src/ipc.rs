@@ -5,7 +5,7 @@ use application::ports::repos::AppSettings;
 use application::ports::secret_store::{SecretError, SecretStore};
 use domain::{
     alert::{AlertCondition, AlertRule},
-    asset::AssetKind, averaging_down::BreakevenPlan, holding::Holding,
+    asset::AssetKind, holding::Holding,
     money::{Currency, Money}, quantity::Quantity, symbol::Symbol,
 };
 use futures::StreamExt;
@@ -126,9 +126,9 @@ pub struct BreakevenPlanArgs {
     pub avg_cost_amount: String,
     pub quantity: String,
     pub current_price_amount: String,
-    pub native_currency: String,
+    pub price_currency: String,
+    pub base_currency: String,
     pub targets_pct: Vec<String>,
-    pub display_currency: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -136,16 +136,17 @@ pub struct AveragingDownRowDto {
     pub target_pct: String,
     pub target_avg: String,
     pub add_quantity: String,
-    pub add_invest_native: String,
-    pub add_invest_native_currency: String,
-    pub add_invest_display: Option<String>,
-    pub display_currency: String,
+    pub add_invest: String,
     pub new_breakeven_gap_pct: String,
     pub feasible: bool,
 }
 
 #[derive(Serialize, Clone)]
 pub struct BreakevenPlanDto {
+    pub rate_missing: bool,
+    pub base_currency: String,
+    pub current_price_base: Option<String>,
+    pub fx_rate_used: Option<String>,
     pub is_underwater: bool,
     pub breakeven_gap_pct: Option<String>,
     pub current_return_pct: Option<String>,
@@ -153,8 +154,13 @@ pub struct BreakevenPlanDto {
     pub rows: Vec<AveragingDownRowDto>,
 }
 
-fn breakeven_plan_to_dto(plan: BreakevenPlan, display: Currency) -> BreakevenPlanDto {
+fn breakeven_outcome_to_dto(outcome: breakeven::Outcome, base: Currency) -> BreakevenPlanDto {
+    let plan = outcome.plan;
     BreakevenPlanDto {
+        rate_missing: false,
+        base_currency: base.as_str().to_string(),
+        current_price_base: Some(outcome.current_price_base.amount().to_string()),
+        fx_rate_used: outcome.fx_rate_used.map(|d| d.to_string()),
         is_underwater: plan.is_underwater,
         breakeven_gap_pct: plan.breakeven_gap_pct.map(|d| d.to_string()),
         current_return_pct: plan.current_return_pct.map(|d| d.to_string()),
@@ -166,10 +172,7 @@ fn breakeven_plan_to_dto(plan: BreakevenPlan, display: Currency) -> BreakevenPla
                 target_pct: r.target_pct.to_string(),
                 target_avg: r.target_avg.amount().to_string(),
                 add_quantity: r.add_quantity.value().to_string(),
-                add_invest_native: r.add_invest_native.amount().to_string(),
-                add_invest_native_currency: r.add_invest_native.currency().as_str().to_string(),
-                add_invest_display: r.add_invest_display.map(|m| m.amount().to_string()),
-                display_currency: display.as_str().to_string(),
+                add_invest: r.add_invest.amount().to_string(),
                 new_breakeven_gap_pct: r.new_breakeven_gap_pct.to_string(),
                 feasible: r.feasible,
             })
@@ -182,8 +185,8 @@ pub async fn breakeven_plan(
     state: State<'_, AppState>,
     args: BreakevenPlanArgs,
 ) -> Result<BreakevenPlanDto, String> {
-    let native = Currency::new(&args.native_currency).map_err(|e| format!("{e:?}"))?;
-    let display = Currency::new(&args.display_currency).map_err(|e| format!("{e:?}"))?;
+    let base = Currency::new(&args.base_currency).map_err(|e| format!("{e:?}"))?;
+    let price_ccy = Currency::new(&args.price_currency).map_err(|e| format!("{e:?}"))?;
     let a = Decimal::from_str(&args.avg_cost_amount).map_err(|e| e.to_string())?;
     let p = Decimal::from_str(&args.current_price_amount).map_err(|e| e.to_string())?;
     let q = Decimal::from_str(&args.quantity).map_err(|e| e.to_string())?;
@@ -196,20 +199,24 @@ pub async fn breakeven_plan(
         targets.push(Decimal::from_str(t).map_err(|e| e.to_string())?);
     }
 
-    let avg_cost = Money::new(a, native);
-    let current_price = Money::new(p, native);
+    let avg_cost = Money::new(a, base);
+    let current_price = Money::new(p, price_ccy);
     let quantity = Quantity::new(q).map_err(|e| format!("{e:?}"))?;
 
-    let plan = breakeven::plan(
-        &state.fx,
-        avg_cost,
-        quantity,
-        current_price,
-        &targets,
-        display,
-    )
-    .await;
-    Ok(breakeven_plan_to_dto(plan, display))
+    match breakeven::plan(&state.fx, avg_cost, quantity, current_price, base, &targets).await {
+        Ok(outcome) => Ok(breakeven_outcome_to_dto(outcome, base)),
+        Err(breakeven::BreakevenError::RateMissing) => Ok(BreakevenPlanDto {
+            rate_missing: true,
+            base_currency: base.as_str().to_string(),
+            current_price_base: None,
+            fx_rate_used: None,
+            is_underwater: false,
+            breakeven_gap_pct: None,
+            current_return_pct: None,
+            max_reduction_pct: "0".to_string(),
+            rows: vec![],
+        }),
+    }
 }
 
 #[tauri::command]
