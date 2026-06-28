@@ -167,6 +167,7 @@ async fn refresh_fx_rates(
     ];
     let now = chrono::Utc::now();
     let from = now - chrono::Duration::days(3);
+    let mut any_updated = false;
     for (yticker, from_code, to_code) in pairs {
         let Ok(from_c) = domain::money::Currency::new(from_code) else { continue };
         let Ok(to_c) = domain::money::Currency::new(to_code) else { continue };
@@ -189,10 +190,16 @@ async fn refresh_fx_rates(
                 if rate > rust_decimal::Decimal::ZERO {
                     fx.set(to_c, from_c, rust_decimal::Decimal::ONE / rate).await;
                 }
+                any_updated = true;
             }
             _ => {
                 let _ = app.emit("fx-refresh-failed", format!("{yticker}: no candles"));
             }
         }
+    }
+    // Signal a successful refresh so live views (e.g. the break-even calculator)
+    // recompute against the new rates even when the underlying price is unchanged.
+    if any_updated {
+        let _ = app.emit("fx-refresh-updated", ());
     }
 }
