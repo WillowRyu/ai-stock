@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useWatchlistStore } from "../lib/state/watchlistStore";
 import { useQuotesStore, quoteKey } from "../lib/state/quotesStore";
-import { ipc, type BreakevenPlanDto, type SymbolDto } from "../lib/ipc";
+import { ipc, onFxRefresh, type BreakevenPlanDto, type SymbolDto } from "../lib/ipc";
 import { formatMoney } from "../lib/format";
 import { Select } from "./Select";
 
@@ -60,6 +60,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
   const [baseMode, setBaseMode] = useState<"native" | "KRW">("native");
   const [plan, setPlan] = useState<BreakevenPlanDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fxTick, setFxTick] = useState(0);
 
   const selectedSymbol = useMemo<SymbolDto | undefined>(
     () => watchlist.find((s) => quoteKey(s) === selectedKey),
@@ -80,6 +81,15 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
     if (customPct && Number(customPct) > 0 && !list.includes(customPct)) list.push(customPct);
     return list;
   }, [customPct]);
+
+  // Re-fire the recompute when FX rates refresh, so the 원화 base case reflects
+  // the new rate even if the underlying (native) price hasn't ticked.
+  useEffect(() => {
+    const unlisten = onFxRefresh(() => setFxTick((t) => t + 1));
+    return () => {
+      unlisten.then((u) => u());
+    };
+  }, []);
 
   // Debounced recompute; also re-fires whenever the live price ticks.
   useEffect(() => {
@@ -111,7 +121,7 @@ export function BreakevenCalc({ onClose }: { onClose(): void }) {
         });
     }, 150);
     return () => clearTimeout(handle);
-  }, [avgInput, qtyInput, effectivePrice, priceCcy, baseCcy, targets]);
+  }, [avgInput, qtyInput, effectivePrice, priceCcy, baseCcy, targets, fxTick]);
 
   const showKrwEcho =
     baseCcy === "KRW" &&

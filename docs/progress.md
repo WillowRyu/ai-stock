@@ -282,3 +282,12 @@ Plan: `docs/superpowers/plans/2026-06-28-breakeven-krw-input.md`.
   `non_positive_target_is_infeasible_not_panic` (single-currency); application
   `converts_native_price_to_base_and_runs_in_base` /
   `base_equals_price_currency_skips_conversion` / `missing_cross_rate_yields_rate_missing`.
+
+## 2026-06-28 — Follow-up: recompute on FX refresh
+
+- `refresh_fx_rates` now emits an `fx-refresh-updated` event after a successful rate
+  update (`app/src/main.rs`); the break-even calculator subscribes via `onFxRefresh`
+  (`src/lib/ipc.ts`) and bumps an `fxTick` in its recompute deps (`BreakevenCalc.tsx`),
+  so the 원화 base case reflects a moved rate even when the native price is unchanged —
+  closing the flat-price + moving-FX corner the final review flagged. Verified:
+  `cargo test --workspace` green; typecheck + build + lint clean.

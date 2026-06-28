@@ -99,6 +99,10 @@ export function onQuoteUpdate(cb: (quotes: QuoteDto[]) => void): Promise<Unliste
   return listen<QuoteDto[]>("quote-update", (e) => cb(e.payload));
 }
 
+export function onFxRefresh(cb: () => void): Promise<UnlistenFn> {
+  return listen("fx-refresh-updated", () => cb());
+}
+
 export type AlertConditionKind = "above" | "below" | "rsi_above" | "rsi_below" | "macd_golden" | "macd_death";
 
 export interface AlertRuleDto {
